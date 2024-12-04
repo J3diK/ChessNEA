@@ -1,26 +1,65 @@
 namespace ChessNEA.Logic.Objects.LinkedList;
 
-public class LinkedList<T>(Node<T> currentNode)
+public class LinkedList<T>
 {
-    private void GoToTail()
+    public Node<T>? Head { get; private set; }
+    public Node<T>? Tail { get; private set; }
+    private int _count = -1;
+
+    public void AddNode(T data)
     {
-        while (currentNode.NextNode is not null)
+        Node<T> node = new()
         {
-            currentNode = currentNode.NextNode;
+            Data = data
+        };
+
+        if (Head is null)
+        {
+            Head = node;
+            Tail = Head;
         }
+        else
+        {
+            Tail!.NextNode = node;
+            Tail!.NextNode.PreviousNode = Tail;
+            Tail = Tail.NextNode;
+
+        }
+
+        _count++;
     }
 
-    public void GoToHead()
+    public static LinkedList<T>? operator+(LinkedList<T> list1, LinkedList<T> list2)
     {
-        while (currentNode.PreviousNode is not null)
+        if (list1.Head is null)
         {
-            currentNode = currentNode.PreviousNode;
+            return list2.Head is null ? null : list2;
         }
+        if (list2.Head is null)
+        {
+            return list1.Head is null ? null : list1;
+        }
+
+        list1.AddNode(list2.Head);
+
+        return list1;
     }
 
-    public void AddNode(Node<T> newNode)
+    private void AddNode(Node<T> node)
     {
-        GoToTail();
-        currentNode.NextNode = newNode;
+        if (Head is null)
+        {
+            Head = node;
+            Tail = Head;
+        }
+        else
+        {
+            Tail!.NextNode = node;
+            Tail!.NextNode.PreviousNode = Tail;
+            Tail = Tail.NextNode;
+
+        }
+
+        _count++;
     }
 }
