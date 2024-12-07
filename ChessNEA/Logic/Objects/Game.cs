@@ -21,14 +21,14 @@ public class Game
     /// </summary>
     public string[,] Board =
     {  // A     B     C     D     E     F     G     H
-        {"wR", "wK", "wB", "wQ", "wK", "wB", "wK", "wR"}, // 1
+        {"wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"}, // 1
         {"wPn", "wPn", "wPn", "wPn", "wPn", "wPn", "wPn", "wPn"}, // 2
         {"", "", "", "", "", "", "", ""},                 // 3
         {"", "", "", "", "", "", "", ""},                 // 4
         {"", "", "", "", "", "", "", ""},                 // 5
         {"", "", "", "", "", "", "", ""},                 // 6
         {"bPn", "bPn", "bPn", "bPn", "bPn", "bPn", "bPn", "bPn"}, // 7
-        {"bR", "bK", "bB", "bQ", "bK", "bB", "bK", "bR"}  // 8
+        {"bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"}  // 8
     };
 
     private bool _isWon = false;
