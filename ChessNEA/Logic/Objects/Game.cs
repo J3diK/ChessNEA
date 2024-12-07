@@ -17,16 +17,17 @@ public class Game
     ///     <item><description>'Q' for Queen</description></item>
     ///     <item><description>'K' for King</description></item>
     /// </list>
+    /// The 3rd character is exclusive for pawns and is either (y)es or (n)o to denote if the pawn has moved.
     /// </summary>
-    private string[,] _board =
+    public string[,] Board =
     {  // A     B     C     D     E     F     G     H
         {"wR", "wK", "wB", "wQ", "wK", "wB", "wK", "wR"}, // 1
-        {"wP", "wP", "wP", "wP", "wP", "wP", "wP", "wP"}, // 2
+        {"wPn", "wPn", "wPn", "wPn", "wPn", "wPn", "wPn", "wPn"}, // 2
         {"", "", "", "", "", "", "", ""},                 // 3
         {"", "", "", "", "", "", "", ""},                 // 4
         {"", "", "", "", "", "", "", ""},                 // 5
         {"", "", "", "", "", "", "", ""},                 // 6
-        {"bP", "bP", "bP", "bP", "bP", "bP", "bP", "bP"}, // 7
+        {"bPn", "bPn", "bPn", "bPn", "bPn", "bPn", "bPn", "bPn"}, // 7
         {"bR", "bK", "bB", "bQ", "bK", "bB", "bK", "bR"}  // 8
     };
 
@@ -40,7 +41,7 @@ public class Game
     /// <returns></returns>
     private LinkedList<(int, int)>? GetMoves((int x, int y) position)
     {
-        return _board[position.x, position.y][1] switch
+        return Board[position.x, position.y][1] switch
         {
             'P' => GetMovesPawn(position),
             'N' => GetMovesKnight(position),
@@ -56,10 +57,17 @@ public class Game
     {
         LinkedList<(int, int)> moves = new();
 
-        for (int i = 1; i < 3; i++)
+        int upperLimit = 1;
+        
+        if (Board[position.x, position.y][2] == 'n')
+        {
+            upperLimit = 2;
+        }
+
+        for (int i = 1; i <= upperLimit; i++)
         {
             // If square i units above is free
-            if (_board[position.x, position.y + 1] == "")
+            if (Board[position.x, position.y + 1] == "")
             {
                 moves.AddNode((position.x, position.y + i));
             }
@@ -68,8 +76,8 @@ public class Game
         for (int i = -1; i < 2; i += 2)
         {
             // If square to the left/right and up 1 is not empty AND is of opposite colour to the current player
-            if (_board[position.x + i, position.y + 1] != "" && 
-                (_board[position.x + i, position.y + 1][0] == 'w' ^ _isWhiteTurn))
+            if (Board[position.x + i, position.y + 1] != "" && 
+                (Board[position.x + i, position.y + 1][0] == 'w' ^ _isWhiteTurn))
             {
                 moves.AddNode((position.x + i, position.y + 1));
             }
@@ -90,8 +98,8 @@ public class Game
                 for (int k = -1; k < 2; k += 2)
                 {
                     // If square to the left/right and up 1 is empty OR is of opposite colour to the current player
-                    if (_board[position.x + j*i, position.y + k*(3-i)] == "" |
-                        (_board[position.x + j*i, position.y + k*(3-i)][0] == 'w' ^ _isWhiteTurn))
+                    if (Board[position.x + j*i, position.y + k*(3-i)] == "" |
+                        (Board[position.x + j*i, position.y + k*(3-i)][0] == 'w' ^ _isWhiteTurn))
                     {
                         moves.AddNode((position.x + j*i, position.y + k*(3-i)));
                     }
@@ -138,12 +146,12 @@ public class Game
         // Check left
         for (int i = left; i >= 0 && !isCollision; i--)
         {
-            if (_board[position.x - i, position.y - i*yMultiplier] != "")
+            if (Board[position.x - i, position.y - i*yMultiplier] != "")
             {
                 isCollision = true;
             } 
             // If same colour
-            if (!(_board[position.x - i, position.y - i*yMultiplier][0] == 'w' ^ _isWhiteTurn))
+            if (!(Board[position.x - i, position.y - i*yMultiplier][0] == 'w' ^ _isWhiteTurn))
             {
                 break;
             }
@@ -154,12 +162,12 @@ public class Game
         isCollision = false;
         for (int i = 0; i <= right && !isCollision; i++)
         {
-            if (_board[position.x + i, position.y + i*yMultiplier] != "")
+            if (Board[position.x + i, position.y + i*yMultiplier] != "")
             {
                 isCollision = true;
             } 
             // If same colour
-            if (!(_board[position.x + i, position.y + i*yMultiplier][0] == 'w' ^ _isWhiteTurn))
+            if (!(Board[position.x + i, position.y + i*yMultiplier][0] == 'w' ^ _isWhiteTurn))
             {
                 break;
             }
@@ -182,12 +190,12 @@ public class Game
 
         for (int i = 0; i < verticalUpMax && !isCollision; i++)
         {
-            if (_board[position.x, position.y + i] != "")
+            if (Board[position.x, position.y + i] != "")
             {
                 isCollision = true;
             } 
             // If same colour
-            if (!(_board[position.x, position.y + i][0] == 'w' ^ _isWhiteTurn))
+            if (!(Board[position.x, position.y + i][0] == 'w' ^ _isWhiteTurn))
             {
                 break;
             }
@@ -198,12 +206,12 @@ public class Game
         isCollision = false;
         for (int i = 0; i < verticalDownMax && !isCollision; i++)
         {
-            if (_board[position.x, position.y - i] != "")
+            if (Board[position.x, position.y - i] != "")
             {
                 isCollision = true;
             } 
             // If same colour
-            if (!(_board[position.x, position.y - i][0] == 'w' ^ _isWhiteTurn))
+            if (!(Board[position.x, position.y - i][0] == 'w' ^ _isWhiteTurn))
             {
                 break;
             }
@@ -214,12 +222,12 @@ public class Game
         isCollision = false;
         for (int i = 0; i < horizontalRightMax && !isCollision; i++)
         {
-            if (_board[position.x + i, position.y] != "")
+            if (Board[position.x + i, position.y] != "")
             {
                 isCollision = true;
             } 
             // If same colour
-            if (!(_board[position.x + i, position.y][0] == 'w' ^ _isWhiteTurn))
+            if (!(Board[position.x + i, position.y][0] == 'w' ^ _isWhiteTurn))
             {
                 break;
             }
@@ -230,12 +238,12 @@ public class Game
         isCollision = false;
         for (int i = 0; i < horizontalLeftMax && !isCollision; i++)
         {
-            if (_board[position.x - i, position.y] != "")
+            if (Board[position.x - i, position.y] != "")
             {
                 isCollision = true;
             } 
             // If same colour
-            if (!(_board[position.x - i, position.y][0] == 'w' ^ _isWhiteTurn))
+            if (!(Board[position.x - i, position.y][0] == 'w' ^ _isWhiteTurn))
             {
                 break;
             }
@@ -254,6 +262,29 @@ public class Game
     
     private LinkedList<(int, int)>? GetMovesKing((int x, int y) position)
     {
-        LinkedList<(int x, int y)> moves = new();;
+        LinkedList<(int x, int y)> moves = new();
+        
+        // -1 0 1
+        // -1 0 1
+        // not 0, 0
+
+        for (int i = -1; i <= 1; i++)
+        {
+            for (int j = -1; j < 1; j++)
+            {
+                if (i == 0 && j == 0)
+                {
+                    continue;
+                }
+                // If opposite colour OR empty
+                if (Board[position.x + i, position.y + j] == "" |
+                    Board[position.x + i, position.y + j][0] == 'w' ^ _isWhiteTurn)
+                {
+                    moves.AddNode((i, j));
+                }
+            }
+        }
+
+        return moves.Head is null ? null : moves;
     }
 }
