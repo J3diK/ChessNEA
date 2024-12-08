@@ -39,8 +39,12 @@ public class Game
     /// </summary>
     /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
     /// <returns></returns>
-    private LinkedList<(int, int)>? GetMoves((int x, int y) position)
+    public LinkedList<(int, int)>? GetMoves((int x, int y) position)
     {
+        if (Board[position.x, position.y] == "")
+        {
+            return null;
+        }
         return Board[position.x, position.y][1] switch
         {
             'P' => GetMovesPawn(position),
@@ -56,7 +60,7 @@ public class Game
     private LinkedList<(int, int)>? GetMovesPawn((int x, int y) position)
     {
         LinkedList<(int, int)> moves = new();
-
+        int multiplier = _isWhiteTurn ? 1 : -1;
         int upperLimit = 1;
         
         if (Board[position.x, position.y][2] == 'n')
@@ -67,19 +71,23 @@ public class Game
         for (int i = 1; i <= upperLimit; i++)
         {
             // If square i units above is free
-            if (Board[position.x, position.y + 1] == "")
+            if (Board[position.x + i*multiplier, position.y] == "")
             {
-                moves.AddNode((position.x, position.y + i));
+                moves.AddNode((position.x + i*multiplier, position.y));
+            }
+            else
+            {
+                break;
             }
         }
 
         for (int i = -1; i < 2; i += 2)
         {
             // If square to the left/right and up 1 is not empty AND is of opposite colour to the current player
-            if (Board[position.x + i, position.y + 1] != "" && 
-                (Board[position.x + i, position.y + 1][0] == 'w' ^ _isWhiteTurn))
+            if (Board[position.x + 1, position.y + i] != "" && 
+                (Board[position.x + 1, position.y + i][0] == 'w' ^ _isWhiteTurn))
             {
-                moves.AddNode((position.x + i, position.y + 1));
+                moves.AddNode((position.x + 1, position.y + i));
             }
         }
 
@@ -97,12 +105,25 @@ public class Game
             {
                 for (int k = -1; k < 2; k += 2)
                 {
-                    // If square to the left/right and up 1 is empty OR is of opposite colour to the current player
-                    if (Board[position.x + j*i, position.y + k*(3-i)] == "" |
-                        (Board[position.x + j*i, position.y + k*(3-i)][0] == 'w' ^ _isWhiteTurn))
+                    if (position.x + j*i < 0 | position.x + j*i > 7)
                     {
-                        moves.AddNode((position.x + j*i, position.y + k*(3-i)));
+                        continue;
                     }
+                    
+                    if (position.y + k*(3-i) < 0 | position.y + k*(3-i) > 7)
+                    {
+                        continue;
+                    }
+                    // If square to the left/right and up 1 is empty OR is of opposite colour to the current player
+                    if (Board[position.x + j * i, position.y + k * (3 - i)] != "")
+                    {
+                        if (!(Board[position.x + j * i, position.y + k * (3 - i)][0] == 'w' ^ _isWhiteTurn))
+                        {
+                            continue;
+                        }
+                    }
+                    
+                    moves.AddNode((position.x + j*i, position.y + k*(3-i)));
                 }
             }
         }
@@ -113,10 +134,10 @@ public class Game
     private LinkedList<(int, int)>? GetMovesBishop((int x, int y) position)
     {
         // Trailing is the / line, leading is the \ line.
-        int trailingDiagonalLeftMax = Math.Min(position.x, position.y);
-        int trailingDiagonalRightMax = Math.Min(7 - position.x, 7 - position.y);
-        int leadingDiagonalLeftMax = Math.Min(7 - position.x, position.y);
-        int leadingDiagonalRightMax = Math.Min(position.x, 7 - position.y);
+        int leadingDiagonalLeftMax = Math.Min(position.x, position.y);
+        int leadingDiagonalRightMax = Math.Min(7 - position.x, 7 - position.y);
+        int trailingDiagonalLeftMax = Math.Min(7 - position.x, position.y);
+        int trailingDiagonalRightMax = Math.Min(position.x, 7 - position.y);
 
         LinkedList<(int x, int y)> trailingMoves = GetMovesBishopLine(
             position,
@@ -140,39 +161,40 @@ public class Game
     {
         LinkedList<(int x, int y)> moves = new();
         
-        int yMultiplier = isTrailing ? 1 : -1;
+        int xMultiplier = isTrailing ? 1 : -1;
         bool isCollision = false;
         
         // Check left
-        for (int i = left; i >= 0 && !isCollision; i--)
+        for (int i = 1; i < left && !isCollision; i++)
         {
-            if (Board[position.x - i, position.y - i*yMultiplier] != "")
+            if (Board[position.x + i * xMultiplier, position.y - i] != "")
             {
                 isCollision = true;
-            } 
-            // If same colour
-            if (!(Board[position.x - i, position.y - i*yMultiplier][0] == 'w' ^ _isWhiteTurn))
-            {
-                break;
+
+                if (!(Board[position.x + i * xMultiplier, position.y - i][0] == 'w' ^ _isWhiteTurn))
+                {
+                    break;
+                }
             }
-            moves.AddNode((position.x - i, position.y - i*yMultiplier));
+            
+            moves.AddNode((position.x + i*xMultiplier, position.y - i));
         }
         
         // Check right
         isCollision = false;
-        for (int i = 0; i <= right && !isCollision; i++)
+        for (int i = 1; i < right && !isCollision; i++)
         {
-            if (Board[position.x + i, position.y + i*yMultiplier] != "")
+            if (Board[position.x - i * xMultiplier, position.y + i] != "")
             {
                 isCollision = true;
-            } 
-            // If same colour
-            if (!(Board[position.x + i, position.y + i*yMultiplier][0] == 'w' ^ _isWhiteTurn))
-            {
-                break;
-            }
 
-            moves.AddNode((position.x + i, position.y + i*yMultiplier));
+                if (!(Board[position.x - i * xMultiplier, position.y + i][0] == 'w' ^ _isWhiteTurn))
+                {
+                    break;
+                }
+            }
+            
+            moves.AddNode((position.x - i*xMultiplier, position.y + i));
         }
 
         return moves;
@@ -182,45 +204,29 @@ public class Game
     {
         LinkedList<(int x, int y)> moves = new();
 
-        int verticalUpMax = 7 - position.y;
-        int verticalDownMax = position.y;
-        int horizontalRightMax = 7 - position.x;
-        int horizontalLeftMax = position.x;
+        int verticalDownMax = 7 - position.x;
+        int verticalUpMax = position.x;
+        int horizontalRightMax = 7 - position.y;
+        int horizontalLeftMax = position.y;
         bool isCollision = false;
 
-        for (int i = 0; i < verticalUpMax && !isCollision; i++)
+        for (int i = 1; i <= verticalUpMax && !isCollision; i++)
         {
-            if (Board[position.x, position.y + i] != "")
+            if (Board[position.x - i, position.y] != "")
             {
                 isCollision = true;
             } 
             // If same colour
-            if (!(Board[position.x, position.y + i][0] == 'w' ^ _isWhiteTurn))
+            if (!(Board[position.x - i, position.y][0] == 'w' ^ _isWhiteTurn))
             {
                 break;
             }
 
-            moves.AddNode((position.x, position.y + i));
+            moves.AddNode((position.x - i, position.y));
         }
 
         isCollision = false;
-        for (int i = 0; i < verticalDownMax && !isCollision; i++)
-        {
-            if (Board[position.x, position.y - i] != "")
-            {
-                isCollision = true;
-            } 
-            // If same colour
-            if (!(Board[position.x, position.y - i][0] == 'w' ^ _isWhiteTurn))
-            {
-                break;
-            }
-
-            moves.AddNode((position.x, position.y - i));
-        }
-        
-        isCollision = false;
-        for (int i = 0; i < horizontalRightMax && !isCollision; i++)
+        for (int i = 1; i <= verticalDownMax && !isCollision; i++)
         {
             if (Board[position.x + i, position.y] != "")
             {
@@ -236,19 +242,35 @@ public class Game
         }
         
         isCollision = false;
-        for (int i = 0; i < horizontalLeftMax && !isCollision; i++)
+        for (int i = 1; i <= horizontalRightMax && !isCollision; i++)
         {
-            if (Board[position.x - i, position.y] != "")
+            if (Board[position.x, position.y + i] != "")
             {
                 isCollision = true;
             } 
             // If same colour
-            if (!(Board[position.x - i, position.y][0] == 'w' ^ _isWhiteTurn))
+            if (!(Board[position.x, position.y + i][0] == 'w' ^ _isWhiteTurn))
             {
                 break;
             }
 
-            moves.AddNode((position.x - i, position.y));
+            moves.AddNode((position.x, position.y + i));
+        }
+        
+        isCollision = false;
+        for (int i = 1; i <= horizontalLeftMax && !isCollision; i++)
+        {
+            if (Board[position.x, position.y - i] != "")
+            {
+                isCollision = true;
+            } 
+            // If same colour
+            if (!(Board[position.x, position.y - i][0] == 'w' ^ _isWhiteTurn))
+            {
+                break;
+            }
+
+            moves.AddNode((position.x, position.y - i));
         }
 
         return moves.Head is null ? null : moves;
@@ -270,17 +292,29 @@ public class Game
 
         for (int i = -1; i <= 1; i++)
         {
-            for (int j = -1; j < 1; j++)
+            for (int j = -1; j <= 1; j++)
             {
                 if (i == 0 && j == 0)
                 {
                     continue;
                 }
-                // If opposite colour OR empty
-                if (Board[position.x + i, position.y + j] == "" |
-                    Board[position.x + i, position.y + j][0] == 'w' ^ _isWhiteTurn)
+
+                if (position.x + i < 0 | position.x + i > 7)
                 {
-                    moves.AddNode((i, j));
+                    continue;
+                }
+                if (position.y + i < 0 | position.y + i > 7)
+                {
+                    continue;
+                }
+                
+                // If opposite colour OR empty
+                if (Board[position.x + i, position.y + j] == "")
+                {
+                    moves.AddNode((position.x + i, position.y + j));
+                } else if (Board[position.x + i, position.y + j][0] == 'w' ^ _isWhiteTurn)
+                {
+                    moves.AddNode((position.x + i, position.y + j));
                 }
             }
         }
