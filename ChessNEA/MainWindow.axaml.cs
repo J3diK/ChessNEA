@@ -11,6 +11,7 @@ namespace ChessNEA;
 public partial class MainWindow : Window
 {
     private readonly Game _game = new();
+    private (int x, int y) _selectedPiece;
     
     public MainWindow()
     {
@@ -18,9 +19,10 @@ public partial class MainWindow : Window
         InitializeBoard();
     }
 
-    private void InitializeBoard()
+    private void InitializeBoard(LinkedList<(int, int)>? moves = null)
     {
-        for (int i = 0; i < 8; i++)
+        BoardGrid.Children.Clear();
+        for (int i = 7; i >= 0; i--)
         {
             for (int j = 0; j < 8; j++)
             {
@@ -36,22 +38,37 @@ public partial class MainWindow : Window
                     Background = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)),
                     CommandParameter = (i, j)
                 };
-                button.Click += (sender, e) => GetMoves(((int x, int y))button.CommandParameter);
+                if (moves is not null && moves.Contains((i, j)))
+                {
+                    button.Click += (sender, e) => MovePiece(((int x, int y))button.CommandParameter);
+                }
+                else
+                {
+                    button.Click += (sender, e) => GetMoves(((int x, int y))button.CommandParameter);
+                }
                 BoardGrid.Children.Add(button);
             }
         }
     }
 
+    private void MovePiece((int x, int y) position)
+    {
+        _game.MovePiece(_selectedPiece, position);
+        InitializeBoard();
+    }
+    
+
     private void GetMoves((int x, int y) position)
     {
-        Console.WriteLine();
-        Console.WriteLine(position);
+        _selectedPiece = position;
         LinkedList<(int, int)>? moves = _game.GetMoves(position);
 
         if (moves is null)
         {
             return;
         }
+        
+        InitializeBoard(moves);
 
         Node<(int, int)>? node = moves.Head;
         

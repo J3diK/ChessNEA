@@ -33,6 +33,13 @@ public class Game
 
     private bool _isWon = false;
     private bool _isWhiteTurn = true;
+
+    public void MovePiece((int x, int y) oldPosition, (int x, int y) newPosition)
+    {
+        Board[newPosition.x, newPosition.y] = Board[oldPosition.x, oldPosition.y];
+        Board[oldPosition.x, oldPosition.y] = "";
+        _isWhiteTurn = !_isWhiteTurn;
+    }
     
     /// <summary>
     /// Returns a list of possible moves a piece can make

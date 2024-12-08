@@ -62,4 +62,30 @@ public class LinkedList<T>
 
         _count++;
     }
+
+    public bool Contains(T data)
+    {
+        Node<T>? node = Head;
+        
+        if (node is null)
+        {
+            return false;
+        }
+
+        if (node.Data != null && node.Data.Equals(data))
+        {
+            return true;
+        }
+        
+        while (node.NextNode is not null)
+        {
+            node = node.NextNode;
+            if (node.Data != null && node.Data.Equals(data))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
