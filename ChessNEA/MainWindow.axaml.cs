@@ -60,6 +60,7 @@ public partial class MainWindow : Window
 
     private void GetMoves((int x, int y) position)
     {
+        InitializeBoard();
         _selectedPiece = position;
         LinkedList<(int, int)>? moves = _game.GetMoves(position);
 

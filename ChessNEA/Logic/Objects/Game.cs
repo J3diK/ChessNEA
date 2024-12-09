@@ -7,7 +7,7 @@ public class Game
 {
     /// <summary>
     /// Each square is either an empty string, denoting a lack of a piece, or a 2 character string.
-    /// The 1st character is 'w' or 'b', denoting whether or not a piece is white or black.
+    /// The 1st character is 'w' or 'b', denoting whether a piece is white or black.
     /// The 2nd character denotes the piece type as follows:
     /// <list type="bullet">
     ///     <item><description>'P' for Pawn</description></item>
@@ -17,38 +17,98 @@ public class Game
     ///     <item><description>'Q' for Queen</description></item>
     ///     <item><description>'K' for King</description></item>
     /// </list>
-    /// The 3rd character is exclusive for pawns and is either (y)es or (n)o to denote if the pawn has moved.
+    /// The 3rd character is exclusive for pawns and is either 0, 1, or 2 to denote if a pawn can be taken en passant.
+    /// A 0 means that it cannot currently be taken, a 1 means it can, a 2 means it never can.
     /// </summary>
+    
     public string[,] Board =
     {  // A     B     C     D     E     F     G     H
         {"wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"}, // 1
-        {"wPn", "wPn", "wPn", "wPn", "wPn", "wPn", "wPn", "wPn"}, // 2
+        {"wP0", "wP0", "wP0", "wP0", "wP0", "wP0", "wP0", "wP0"}, // 2
         {"", "", "", "", "", "", "", ""},                 // 3
         {"", "", "", "", "", "", "", ""},                 // 4
         {"", "", "", "", "", "", "", ""},                 // 5
         {"", "", "", "", "", "", "", ""},                 // 6
-        {"bPn", "bPn", "bPn", "bPn", "bPn", "bPn", "bPn", "bPn"}, // 7
+        {"bP0", "bP0", "bP0", "bP0", "bP0", "bP0", "bP0", "bP0"}, // 7
         {"bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"}  // 8
     };
-
+    
     private bool _isWon = false;
     private bool _isWhiteTurn = true;
 
+    /// <summary>
+    /// Increments the pawn move counter by 1, or by 0 if already at 2
+    /// </summary>
+    /// <param name="counter">The current move counter</param>
+    /// <returns>The incremented move counter</returns>
+    /// <exception cref="ArgumentException">Invalid input</exception>
+    private char IncrementMoveCounter(char counter)
+    {
+        return counter switch
+        {
+            '0' => '1',
+            '1' => '2',
+            '2' => '2',
+            _ => throw new ArgumentException("Unknown counter value")
+        };
+    }
+
+    private string ChangeEnPassant(string piece)
+    {
+        return piece[1] switch
+        {
+            '0' => piece[..2] + '0',
+            '1' => piece[..2] + '2',
+            '2' => piece[..2] + '2',
+            _ => throw new ArgumentException("Unknown counter value")
+        };
+    }
+
+    /// <summary>
+    /// Moves a piece on the board from one position to another
+    /// </summary>
+    /// <param name="oldPosition">The position the piece is currently at</param>
+    /// <param name="newPosition">The position the piece is to move to</param>
     public void MovePiece((int x, int y) oldPosition, (int x, int y) newPosition)
     {
+        if (Board[oldPosition.x, oldPosition.y][1] == 'P')
+        {
+            if (Math.Abs(oldPosition.x - newPosition.x) == 2)
+            {
+                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] +
+                                                      IncrementMoveCounter(Board[oldPosition.x, oldPosition.y][2]);
+            }
+        }
+        
         Board[newPosition.x, newPosition.y] = Board[oldPosition.x, oldPosition.y];
         Board[oldPosition.x, oldPosition.y] = "";
         _isWhiteTurn = !_isWhiteTurn;
+
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                if (Board[i, j] != "" && Board[i, j][1] == 'P' && !(i == newPosition.x && j == newPosition.y))
+                {
+                    Board[i, j] = ChangeEnPassant(Board[i, j]);
+                }
+            }
+        }
     }
     
     /// <summary>
     /// Returns a list of possible moves a piece can make
     /// </summary>
     /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
-    /// <returns></returns>
+    /// <returns>A list of possible moves</returns>
     public LinkedList<(int, int)>? GetMoves((int x, int y) position)
     {
         if (Board[position.x, position.y] == "")
+        {
+            return null;
+        }
+
+        if (Board[position.x, position.y][0] == 'w' ^ _isWhiteTurn)
         {
             return null;
         }
@@ -64,13 +124,19 @@ public class Game
         };
     }
 
+    /// <summary>
+    /// Returns a list of possible moves a pawn can make
+    /// </summary>
+    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
+    /// <returns>A list of possible moves</returns>
     private LinkedList<(int, int)>? GetMovesPawn((int x, int y) position)
     {
         LinkedList<(int, int)> moves = new();
         int multiplier = _isWhiteTurn ? 1 : -1;
         int upperLimit = 1;
         
-        if (Board[position.x, position.y][2] == 'n')
+        // Pawn can move 2 squares forwards if not yet moved
+        if (Board[position.x, position.y][2] == '0')
         {
             upperLimit = 2;
         }
@@ -97,10 +163,31 @@ public class Game
                 moves.AddNode((position.x + 1, position.y + i));
             }
         }
+        
+        // Check for en passant
+        for (int i = -1; i < 2; i++)
+        {  // If there is a pawn next to the pawn we are getting the moves for
+            if (Board[position.x, position.y + i] != "" && Board[position.x, position.y + i][1] == 'P')
+            {
+                // If opposite colour
+                if (Board[position.x, position.y + i][0] == 'w' ^ _isWhiteTurn)
+                {  // If can be taken en passant
+                    if (Board[position.x, position.y + i][2] == '1')
+                    {
+                        moves.AddNode((position.x, position.y + i));
+                    }
+                }
+            }
+        }
 
         return moves.Head is null ? null : moves;
     }
     
+    /// <summary>
+    /// Returns a list of possible moves a knight can make
+    /// </summary>
+    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
+    /// <returns>A list of possible moves</returns>
     private LinkedList<(int, int)>? GetMovesKnight((int x, int y) position)
     {
         LinkedList<(int x, int y)> moves = new();
@@ -138,6 +225,11 @@ public class Game
         return moves.Head is null ? null : moves;
     }
     
+    /// <summary>
+    /// Returns a list of possible moves a bishop can make
+    /// </summary>
+    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
+    /// <returns>A list of possible moves</returns>
     private LinkedList<(int, int)>? GetMovesBishop((int x, int y) position)
     {
         // Trailing is the / line, leading is the \ line.
@@ -164,6 +256,14 @@ public class Game
         return trailingMoves + leadingMoves;
     }
 
+    /// <summary>
+    /// Returns a list of possible moves a bishop can make on a diagonal
+    /// </summary>
+    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
+    /// <param name="left">The furthest number of units left the bishop can go</param>
+    /// <param name="right">The furthest number of units right the bishop can go</param>
+    /// <param name="isTrailing">If the diagonal to be checked is the trailing diagonal or not (leading).</param>
+    /// <returns>A list of possible moves</returns>
     private LinkedList<(int, int)> GetMovesBishopLine((int x, int y) position, int left, int right, bool isTrailing)
     {
         LinkedList<(int x, int y)> moves = new();
@@ -207,6 +307,11 @@ public class Game
         return moves;
     }
     
+    /// <summary>
+    /// Returns a list of possible moves a rook can make
+    /// </summary>
+    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
+    /// <returns>A list of possible moves</returns>
     private LinkedList<(int, int)>? GetMovesRook((int x, int y) position)
     {
         LinkedList<(int x, int y)> moves = new();
@@ -219,10 +324,12 @@ public class Game
 
         for (int i = 1; i <= verticalUpMax && !isCollision; i++)
         {
-            if (Board[position.x - i, position.y] != "")
+            if (Board[position.x - i, position.y] == "")
             {
-                isCollision = true;
+                moves.AddNode((position.x - i, position.y));
+                continue;
             } 
+            isCollision = true;
             // If same colour
             if (!(Board[position.x - i, position.y][0] == 'w' ^ _isWhiteTurn))
             {
@@ -235,10 +342,12 @@ public class Game
         isCollision = false;
         for (int i = 1; i <= verticalDownMax && !isCollision; i++)
         {
-            if (Board[position.x + i, position.y] != "")
+            if (Board[position.x + i, position.y] == "")
             {
-                isCollision = true;
+                moves.AddNode((position.x + i, position.y));
+                continue;
             } 
+            isCollision = true;
             // If same colour
             if (!(Board[position.x + i, position.y][0] == 'w' ^ _isWhiteTurn))
             {
@@ -251,10 +360,12 @@ public class Game
         isCollision = false;
         for (int i = 1; i <= horizontalRightMax && !isCollision; i++)
         {
-            if (Board[position.x, position.y + i] != "")
+            if (Board[position.x, position.y + i] == "")
             {
-                isCollision = true;
+                moves.AddNode((position.x, position.y + i));
+                continue;
             } 
+            isCollision = true;
             // If same colour
             if (!(Board[position.x, position.y + i][0] == 'w' ^ _isWhiteTurn))
             {
@@ -267,10 +378,12 @@ public class Game
         isCollision = false;
         for (int i = 1; i <= horizontalLeftMax && !isCollision; i++)
         {
-            if (Board[position.x, position.y - i] != "")
+            if (Board[position.x, position.y - i] == "")
             {
-                isCollision = true;
+                moves.AddNode((position.x, position.y - i));
+                continue;
             } 
+            isCollision = true;
             // If same colour
             if (!(Board[position.x, position.y - i][0] == 'w' ^ _isWhiteTurn))
             {
@@ -282,20 +395,26 @@ public class Game
 
         return moves.Head is null ? null : moves;
     }
-    
+
+    /// <summary>
+    /// Returns a list of possible moves a queen can make
+    /// </summary>
+    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
+    /// <returns>A list of possible moves</returns>
     private LinkedList<(int, int)>? GetMovesQueen((int x, int y) position)
     {
         return (GetMovesBishop(position) ?? new LinkedList<(int, int)>()) + 
                (GetMovesRook(position) ?? new LinkedList<(int, int)>());
     }
     
+    /// <summary>
+    /// Returns a list of possible moves a king can make
+    /// </summary>
+    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
+    /// <returns>A list of possible moves</returns>
     private LinkedList<(int, int)>? GetMovesKing((int x, int y) position)
     {
         LinkedList<(int x, int y)> moves = new();
-        
-        // -1 0 1
-        // -1 0 1
-        // not 0, 0
 
         for (int i = -1; i <= 1; i++)
         {
