@@ -51,6 +51,7 @@ public class Game
         moves = moves + (GetMovesRook(kingPosition) ?? new LinkedList<(int, int)>());
         moves = moves + (GetMovesQueen(kingPosition) ?? new LinkedList<(int, int)>());
         moves = moves + (GetMovesKing(kingPosition) ?? new LinkedList<(int, int)>());
+        //update
         
         if (moves is null)
         {
