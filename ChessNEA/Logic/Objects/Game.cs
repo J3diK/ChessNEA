@@ -44,26 +44,31 @@ public class Game
         // Check if opposite colour exists in possible moves king could take as any non-king piece
         (int x, int y) kingPosition = _isWhiteTurn ? _whiteKingPosition : _blackKingPosition;
 
-        LinkedList<(int x, int y)> moves = new();
-        moves += GetMovesPawn(kingPosition) ?? new LinkedList<(int, int)>();  // TODO: Make it so that it only checks pawn captures, not any move
-        moves += GetMovesKnight(kingPosition) ?? new LinkedList<(int, int)>();
-        moves += GetMovesBishop(kingPosition) ?? new LinkedList<(int, int)>();
-        moves += GetMovesRook(kingPosition) ?? new LinkedList<(int, int)>();
-        moves += GetMovesQueen(kingPosition) ?? new LinkedList<(int, int)>();
-        moves += GetMovesKing(kingPosition) ?? new LinkedList<(int, int)>();
+        LinkedList<(int, int)> moves = new();
+        moves = moves + (GetMovesPawn(kingPosition) ?? new LinkedList<(int, int)>());  // TODO: Make it so that it only checks pawn captures, not any move
+        moves = moves + (GetMovesKnight(kingPosition) ?? new LinkedList<(int, int)>());
+        moves = moves + (GetMovesBishop(kingPosition) ?? new LinkedList<(int, int)>());
+        moves = moves + (GetMovesRook(kingPosition) ?? new LinkedList<(int, int)>());
+        moves = moves + (GetMovesQueen(kingPosition) ?? new LinkedList<(int, int)>());
+        moves = moves + (GetMovesKing(kingPosition) ?? new LinkedList<(int, int)>());
         
         if (moves is null)
         {
             return false;
         }
-        
-        while (moves.Head is not null)
+
+        Node<(int, int)>? node = moves.Head;
+        while (node is not null)
         {
-            if (Board[moves.Head.Data.x, moves.Head.Data.y][0] == 'w' ^ _isWhiteTurn)
+            if (Board[node.Data.Item1, node.Data.Item2][0] == 'w' ^ _isWhiteTurn)
             {
                 return true;
             }
+            
+            node = node.NextNode;
         }
+
+        return false;
     }
 
     /// <summary>
