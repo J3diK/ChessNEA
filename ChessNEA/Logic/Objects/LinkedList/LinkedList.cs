@@ -4,7 +4,7 @@ public class LinkedList<T>
 {
     public Node<T>? Head { get; private set; }
     public Node<T>? Tail { get; private set; }
-    private int _count = -1;
+    private int _count = 0;
 
     public void AddNode(T data)
     {
@@ -23,7 +23,6 @@ public class LinkedList<T>
             Tail!.NextNode = node;
             Tail!.NextNode.PreviousNode = Tail;
             Tail = Tail.NextNode;
-
         }
 
         _count++;
@@ -40,27 +39,15 @@ public class LinkedList<T>
             return list1.Head is null ? null : list1;
         }
 
-        list1.AddNode(list2.Head);
+        Node<T>? node = list2.Head;
+
+        while (node is not null)
+        {
+            list1.AddNode(node.Data);
+            node = node.NextNode;
+        }
 
         return list1;
-    }
-
-    private void AddNode(Node<T> node)
-    {
-        if (Head is null)
-        {
-            Head = node;
-            Tail = Head;
-        }
-        else
-        {
-            Tail!.NextNode = node;
-            Tail!.NextNode.PreviousNode = Tail;
-            Tail = Tail.NextNode;
-
-        }
-
-        _count++;
     }
 
     public bool Contains(T data)

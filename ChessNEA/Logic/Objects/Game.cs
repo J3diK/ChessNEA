@@ -165,7 +165,7 @@ public class Game
             else
             {
                 Board[oldPosition.x, 5] = Board[oldPosition.x, 7][..2] + '1';
-                Board[oldPosition.x, 0] = "";
+                Board[oldPosition.x, 7] = "";
             }
         }
         
@@ -333,23 +333,23 @@ public class Game
     private LinkedList<(int, int)>? GetMovesBishop((int x, int y) position)
     {
         // Trailing is the / line, leading is the \ line.
-        int leadingDiagonalLeftMax = Math.Min(position.x, position.y);
-        int leadingDiagonalRightMax = Math.Min(7 - position.x, 7 - position.y);
-        int trailingDiagonalLeftMax = Math.Min(7 - position.x, position.y);
-        int trailingDiagonalRightMax = Math.Min(position.x, 7 - position.y);
+        int trailingDiagonalLeftMax = Math.Min(position.x, position.y);
+        int trailingDiagonalRightMax = Math.Min(7 - position.x, 7 - position.y);
+        int leadingDiagonalLeftMax = Math.Min(7 - position.x, position.y);
+        int leadingDiagonalRightMax = Math.Min(position.x, 7 - position.y);
 
         LinkedList<(int x, int y)> trailingMoves = GetMovesBishopLine(
             position,
             trailingDiagonalLeftMax,
             trailingDiagonalRightMax,
-            true
+            false
             );
         
         LinkedList<(int x, int y)> leadingMoves = GetMovesBishopLine(
             position,
             leadingDiagonalLeftMax,
             leadingDiagonalRightMax,
-            false
+            true
         );
 
         
@@ -362,17 +362,17 @@ public class Game
     /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
     /// <param name="left">The furthest number of units left the bishop can go</param>
     /// <param name="right">The furthest number of units right the bishop can go</param>
-    /// <param name="isTrailing">If the diagonal to be checked is the trailing diagonal or not (leading).</param>
+    /// <param name="isLeading">If the diagonal to be checked is the leading diagonal or not (trailing).</param>
     /// <returns>A list of possible moves</returns>
-    private LinkedList<(int, int)> GetMovesBishopLine((int x, int y) position, int left, int right, bool isTrailing)
+    private LinkedList<(int, int)> GetMovesBishopLine((int x, int y) position, int left, int right, bool isLeading)
     {
         LinkedList<(int x, int y)> moves = new();
         
-        int xMultiplier = isTrailing ? 1 : -1;
+        int xMultiplier = isLeading ? 1 : -1;
         bool isCollision = false;
         
         // Check left
-        for (int i = 1; i < left && !isCollision; i++)
+        for (int i = 1; i <= left && !isCollision; i++)
         {
             if (Board[position.x + i * xMultiplier, position.y - i] != "")
             {
@@ -389,7 +389,7 @@ public class Game
         
         // Check right
         isCollision = false;
-        for (int i = 1; i < right && !isCollision; i++)
+        for (int i = 1; i <= right && !isCollision; i++)
         {
             if (Board[position.x - i * xMultiplier, position.y + i] != "")
             {
