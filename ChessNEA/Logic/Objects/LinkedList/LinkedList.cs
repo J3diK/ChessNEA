@@ -1,10 +1,12 @@
+using System.Diagnostics;
+
 namespace ChessNEA.Logic.Objects.LinkedList;
 
 public class LinkedList<T>
 {
     public Node<T>? Head { get; private set; }
-    public Node<T>? Tail { get; private set; }
-    private int _count = 0;
+    private Node<T>? Tail { get; set; }
+    private int _count;
 
     public void AddNode(T data)
     {
@@ -43,6 +45,7 @@ public class LinkedList<T>
 
         while (node is not null)
         {
+            Debug.Assert(node.Data != null, "node.Data != null");
             list1.AddNode(node.Data);
             node = node.NextNode;
         }

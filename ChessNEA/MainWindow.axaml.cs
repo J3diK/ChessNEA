@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.Loader;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -26,7 +25,7 @@ public partial class MainWindow : Window
         {
             for (int j = 0; j < 8; j++)
             {
-                Button button = new Button
+                Button button = new()
                 {
                     Content = GetSymbol(_game.Board[i, j]),
                     FontSize = 72,
@@ -40,11 +39,11 @@ public partial class MainWindow : Window
                 };
                 if (moves is not null && moves.Contains((i, j)))
                 {
-                    button.Click += (sender, e) => MovePiece(((int x, int y))button.CommandParameter);
+                    button.Click += (_, _) => MovePiece(((int x, int y))button.CommandParameter);
                 }
                 else
                 {
-                    button.Click += (sender, e) => GetMoves(((int x, int y))button.CommandParameter);
+                    button.Click += (_, _) => GetMoves(((int x, int y))button.CommandParameter);
                 }
                 BoardGrid.Children.Add(button);
             }
