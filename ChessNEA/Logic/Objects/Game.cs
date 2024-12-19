@@ -41,6 +41,8 @@ public class Game
 
     private bool IsKingInCheck((int x, int y)? position=null)
     {
+        // TODO: check if the piece 'checking' is the actual piece
+        
         // Check if opposite colour exists in possible moves king could take as any non-king piece
         (int x, int y) kingPosition = _isWhiteTurn ? _whiteKingPosition : _blackKingPosition;
 
@@ -111,7 +113,7 @@ public class Game
     
     private void UpdateKingPosition((int x, int y) position)
     {
-        if (Board[position.x, position.y][0] == 'w')
+        if (_isWhiteTurn)
         {
             _whiteKingPosition = position;
         }
@@ -144,8 +146,14 @@ public class Game
     {
         if (Board[oldPosition.x, oldPosition.y][1] == 'P')
         {
-            Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] +
-                                                  IncrementMoveCounter(Board[oldPosition.x, oldPosition.y][2]);
+            if (Math.Abs(oldPosition.x - newPosition.x) == 2)
+            {
+                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '1';
+            }
+            else
+            {
+                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '2';
+            }
 
             if (IsTakingEnPassant(oldPosition, newPosition))
             {
@@ -156,7 +164,7 @@ public class Game
         if (Board[oldPosition.x, oldPosition.y][1] == 'K' | Board[oldPosition.x, oldPosition.y][1] == 'R')
         {
             Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '1';
-            UpdateKingPosition(oldPosition);
+            UpdateKingPosition(newPosition);
         }
         
         // If castling
@@ -421,7 +429,7 @@ public class Game
                 {
                     break;
                 }
-                moves.AddNode((position.x + i*xMultiplier, position.y - i));
+                moves.AddNode((position.x - i*xMultiplier, position.y + i));
             } else if (!checkingCheck)
             {
                 moves.AddNode((position.x - i * xMultiplier, position.y + i));
@@ -552,6 +560,7 @@ public class Game
     /// <returns>A list of possible moves</returns>
     private LinkedList<(int, int)>? GetMovesKing((int x, int y) position)
     {
+        // TODO: fix
         if (IsKingInCheck())
         {
             return null;
