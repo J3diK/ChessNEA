@@ -34,29 +34,52 @@ public class Game
         {"bR0", "bN", "bB", "bQ", "bK0", "bB", "bN", "bR0"}  // 8
     };
     
-    (int x, int y) _whiteKingPosition = (0, 4);
-    (int x, int y) _blackKingPosition = (7, 4);
+    private (int x, int y) _whiteKingPosition = (0, 4);
+    private (int x, int y) _blackKingPosition = (7, 4);
+    private (int x, int y) _kingPosition = (0, 4);
+    
     private bool _isWon = false;
     private bool _isWhiteTurn = true;
 
-    private bool IsKingInCheck((int x, int y)? position=null)
+    private bool IsKingInCheck((int x, int y)? newPosition=null, (int x, int y)? oldPosition=null)
     {
-        // TODO: check if the piece 'checking' is the actual piece
-        
-        // Check if opposite colour exists in possible moves king could take as any non-king piece
         (int x, int y) kingPosition = _isWhiteTurn ? _whiteKingPosition : _blackKingPosition;
-
-        if (position is not null)
+        bool isMoving = newPosition is not null && oldPosition is not null;
+        string oldPositionPiece = "";
+        string newPositionPiece = "";
+        
+        if (isMoving)
         {
-            kingPosition = ((int x, int y))position;
-        }
+            oldPositionPiece = Board[oldPosition!.Value.x, oldPosition!.Value.y];
+            newPositionPiece = Board[newPosition!.Value.x, newPosition!.Value.y];
+            Board[oldPosition!.Value.x, oldPosition!.Value.y] = "";
+            Board[newPosition!.Value.x, newPosition!.Value.y] = oldPositionPiece;
 
+            if (oldPositionPiece[1] == 'K')
+            {
+                kingPosition = newPosition!.Value;
+            }
+        }
+        
         LinkedList<(int, int)>? moves = new();
-        moves = moves + (GetMovesPawn(kingPosition, true) ?? new LinkedList<(int, int)>()); 
-        moves = (moves ?? new LinkedList<(int, int)>()) + (GetMovesKnight(kingPosition, true) ?? new LinkedList<(int, int)>());
-        moves = (moves ?? new LinkedList<(int, int)>()) + (GetMovesBishop(kingPosition, true) ?? new LinkedList<(int, int)>());
-        moves = (moves ?? new LinkedList<(int, int)>()) + (GetMovesRook(kingPosition, true) ?? new LinkedList<(int, int)>());
-        moves = (moves ?? new LinkedList<(int, int)>()) + (GetMovesQueen(kingPosition, true) ?? new LinkedList<(int, int)>());
+        
+        
+        // TODO: Modify how adding linked list works to allow null
+        moves += GetOnlyCertainPiece(GetMovesPawn(kingPosition, true), 'P') ?? new LinkedList<(int, int)>();
+        moves = (moves ?? new LinkedList<(int, int)>()) +
+                (GetOnlyCertainPiece(GetMovesKnight(kingPosition, true), 'N') ?? new LinkedList<(int, int)>());
+        moves = (moves ?? new LinkedList<(int, int)>()) +
+                (GetOnlyCertainPiece(GetMovesBishop(kingPosition, true), 'B') ?? new LinkedList<(int, int)>());
+        moves = (moves ?? new LinkedList<(int, int)>()) +
+                (GetOnlyCertainPiece(GetMovesRook(kingPosition, true), 'R') ?? new LinkedList<(int, int)>());
+        moves = (moves ?? new LinkedList<(int, int)>()) +
+                (GetOnlyCertainPiece(GetMovesQueen(kingPosition, true), 'Q') ?? new LinkedList<(int, int)>());
+
+        if (isMoving)
+        {
+            Board[oldPosition!.Value.x, oldPosition!.Value.y] = oldPositionPiece;
+            Board[newPosition!.Value.x, newPosition!.Value.y] = newPositionPiece;
+        }
         
         if (moves is null)
         {
@@ -75,6 +98,29 @@ public class Game
         }
 
         return false;
+    }
+    
+    private LinkedList<(int, int)>? GetOnlyCertainPiece(LinkedList<(int, int)>? moves, char piece)
+    {
+        LinkedList<(int, int)> newMoves = new();
+        
+        if (moves is null)
+        {
+            return null;
+        }
+        
+        Node<(int, int)>? node = moves.Head;
+        while (node is not null)
+        {
+            if (Board[node.Data.Item1, node.Data.Item2][1] == piece)
+            {
+                newMoves.AddNode(node.Data);
+            }
+            
+            node = node.NextNode;
+        }
+        
+        return newMoves.Head is null ? null : newMoves;
     }
 
     /// <summary>
@@ -121,6 +167,7 @@ public class Game
         {
             _blackKingPosition = position;
         }
+        _kingPosition = position;
     }
     
     /// <summary>
@@ -216,16 +263,50 @@ public class Game
             return null;
         }
 
-        return Board[position.x, position.y][1] switch
+        LinkedList<(int, int)>? moves;
+        
+        switch (Board[position.x, position.y][1])
         {
-            'P' => GetMovesPawn(position),
-            'N' => GetMovesKnight(position),
-            'B' => GetMovesBishop(position),
-            'R' => GetMovesRook(position),
-            'Q' => GetMovesQueen(position),
-            'K' => GetMovesKing(position),
-            _ => throw new ArgumentException($"Unknown piece type at {position}.")
-        };
+            case 'P':
+                moves = GetMovesPawn(position);
+                break;
+            case 'N':
+                moves = GetMovesKnight(position);
+                break;
+            case 'B':
+                moves = GetMovesBishop(position);
+                break;
+            case 'R':
+                moves = GetMovesRook(position);
+                break;
+            case 'Q':
+                moves = GetMovesQueen(position);
+                break;
+            case 'K':
+                moves = GetMovesKing(position);
+                break;
+            default:
+                throw new ArgumentException($"Unknown piece type at {position}.");
+        }
+
+        if (moves is null)
+        {
+            return null;
+        }
+
+        Node<(int, int)>? node = moves.Head;
+        
+        while (node is not null)
+        {
+            if (IsKingInCheck(node.Data, position))
+            {
+                moves.RemoveNode(node.Data);
+            }
+            
+            node = node.NextNode;
+        }
+
+        return moves;
     }
 
     /// <summary>
@@ -560,12 +641,6 @@ public class Game
     /// <returns>A list of possible moves</returns>
     private LinkedList<(int, int)>? GetMovesKing((int x, int y) position)
     {
-        // TODO: fix
-        if (IsKingInCheck())
-        {
-            return null;
-        }
-        
         LinkedList<(int x, int y)> moves = new();
 
         for (int i = -1; i <= 1; i++)
@@ -602,17 +677,17 @@ public class Game
         {
             // If rook hasn't moved and there is no piece between the king and the rook
             if (Board[position.x, 0][1..] == "R0" && 
-                Board[position.x, 1] == "" && !IsKingInCheck((position.x, 1)) &&
-                Board[position.x, 2] == "" && !IsKingInCheck((position.x, 2)) &&
-                Board[position.x, 3] == "" && !IsKingInCheck((position.x, 3))
+                Board[position.x, 1] == "" && !IsKingInCheck((position.x, 1), _kingPosition) &&
+                Board[position.x, 2] == "" && !IsKingInCheck((position.x, 2), _kingPosition) &&
+                Board[position.x, 3] == "" && !IsKingInCheck((position.x, 3), _kingPosition)
                 )
             {
                 moves.AddNode((position.x, 2));
             }
 
             if (Board[position.x, 7][1..] == "R0" && 
-                Board[position.x, 5] == "" && !IsKingInCheck((position.x, 5)) &&
-                Board[position.x, 6] == "" && !IsKingInCheck((position.x, 6))
+                Board[position.x, 5] == "" && !IsKingInCheck((position.x, 5), _kingPosition) &&
+                Board[position.x, 6] == "" && !IsKingInCheck((position.x, 6), _kingPosition)
                 )
             {
                 moves.AddNode((position.x, 6));

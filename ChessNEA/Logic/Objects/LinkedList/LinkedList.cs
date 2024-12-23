@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 
 namespace ChessNEA.Logic.Objects.LinkedList;
@@ -28,6 +29,43 @@ public class LinkedList<T>
         }
 
         _count++;
+    }
+    
+    public void RemoveNode(T data)
+    {
+        Node<T>? node = Head;
+        
+        if (node is null)
+        {
+            return;
+        }
+
+        if (node.Data != null && node.Data.Equals(data))
+        {
+            Head = node.NextNode;
+            if (Head != null) Head.PreviousNode = null;
+            _count--;
+            return;
+        }
+        
+        while (node.NextNode is not null)
+        {
+            try
+            {
+                node = node.NextNode;
+                if (node.Data == null || !node.Data.Equals(data)) continue;
+                node.PreviousNode!.NextNode = node.NextNode;
+                if (node.NextNode == null) continue;
+                node.NextNode.PreviousNode = node.PreviousNode;
+                _count--;
+                return;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+        }
     }
 
     public static LinkedList<T>? operator+(LinkedList<T> list1, LinkedList<T> list2)
