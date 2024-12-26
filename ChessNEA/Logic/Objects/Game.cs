@@ -38,9 +38,34 @@ public class Game
     private (int x, int y) _blackKingPosition = (7, 4);
     private (int x, int y) _kingPosition = (0, 4);
     
-    private bool _isWon = false;
+    private bool _isFinished;
+    private double _score;
     private bool _isWhiteTurn = true;
+    private int _movesSincePawnOrCapture;
+    private bool _isLastTurnPawnOrCapture = false;
 
+    private bool IsCheckmate()
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                if (Board[i, j] == "" || !IsCurrentPlayerColour(Board[i, j])) continue;
+                if (GetMoves((i, j)) is not null)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+    
+    private bool IsCurrentPlayerColour(string piece)
+    {
+        return !(piece[0] == 'w' ^ _isWhiteTurn);
+    }
+    
     private bool IsKingInCheck((int x, int y)? newPosition=null, (int x, int y)? oldPosition=null)
     {
         (int x, int y) kingPosition = _isWhiteTurn ? _whiteKingPosition : _blackKingPosition;
@@ -89,7 +114,7 @@ public class Game
         Node<(int, int)>? node = moves.Head;
         while (node is not null)
         {
-            if (Board[node.Data.Item1, node.Data.Item2][0] == 'w' ^ _isWhiteTurn)
+            if (!IsCurrentPlayerColour(Board[node.Data.Item1, node.Data.Item2]))
             {
                 return true;
             }
@@ -180,8 +205,13 @@ public class Game
     {
         return Math.Abs(oldPosition.x - newPosition.x) == 1 && Math.Abs(oldPosition.y - newPosition.y) == 1
             && Board[oldPosition.x, newPosition.y] != "" && Board[oldPosition.x, newPosition.y][1] == 'P'
-            && (Board[oldPosition.x, newPosition.y][0] == 'w' ^ _isWhiteTurn)
+            && !IsCurrentPlayerColour(Board[oldPosition.x, newPosition.y])
             && Board[oldPosition.x, newPosition.y][2] == '1';
+    }
+    
+    private bool ReachedOppositeEnd((int x, int y) position)
+    {
+        return (_isWhiteTurn && position.x == 7) || (!_isWhiteTurn && position.x == 0);
     }
 
     /// <summary>
@@ -193,6 +223,7 @@ public class Game
     {
         if (Board[oldPosition.x, oldPosition.y][1] == 'P')
         {
+            _movesSincePawnOrCapture = -1;
             if (Math.Abs(oldPosition.x - newPosition.x) == 2)
             {
                 Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '1';
@@ -206,12 +237,22 @@ public class Game
             {
                 Board[oldPosition.x, newPosition.y] = "";
             }
+
+            if (ReachedOppositeEnd(newPosition))
+            {
+                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..1] + 'Q' + '1';
+            }
         }
 
-        if (Board[oldPosition.x, oldPosition.y][1] == 'K' | Board[oldPosition.x, oldPosition.y][1] == 'R')
+        switch (Board[oldPosition.x, oldPosition.y][1])
         {
-            Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '1';
-            UpdateKingPosition(newPosition);
+            case 'K':
+                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '1';
+                UpdateKingPosition(newPosition);
+                break;
+            case 'R':
+                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '1';
+                break;
         }
         
         // If castling
@@ -229,6 +270,11 @@ public class Game
                 Board[oldPosition.x, 7] = "";
             }
         }
+
+        if (Board[newPosition.x, newPosition.y] != "")
+        {
+            _movesSincePawnOrCapture = -1;
+        }
         
         Board[newPosition.x, newPosition.y] = Board[oldPosition.x, oldPosition.y];
         Board[oldPosition.x, oldPosition.y] = "";
@@ -244,6 +290,21 @@ public class Game
                 }
             }
         }
+
+        if (_isWhiteTurn)
+        {
+            _movesSincePawnOrCapture++;
+        }
+        
+        if (IsCheckmate())
+        {
+            _score = _isWhiteTurn ? -1 : 1;
+            _isFinished = true;
+        } else if (_movesSincePawnOrCapture == 50)
+        {
+            _score = 0.5;
+            _isFinished = true;
+        }
     }
     
     /// <summary>
@@ -258,7 +319,7 @@ public class Game
             return null;
         }
 
-        if (Board[position.x, position.y][0] == 'w' ^ _isWhiteTurn)
+        if (!IsCurrentPlayerColour(Board[position.x, position.y]))
         {
             return null;
         }
@@ -306,7 +367,7 @@ public class Game
             node = node.NextNode;
         }
 
-        return moves;
+        return moves.Head is null ? null : moves;
     }
 
     /// <summary>
@@ -353,7 +414,7 @@ public class Game
             }
             // If square to the left/right and up 1 is not empty AND is of opposite colour to the current player
             if (Board[position.x + multiplier, position.y + i] != "" && 
-                (Board[position.x + multiplier, position.y + i][0] == 'w' ^ _isWhiteTurn))
+                !IsCurrentPlayerColour(Board[position.x + multiplier, position.y + i]))
             {
                 moves.AddNode((position.x + multiplier, position.y + i));
             }
@@ -371,7 +432,7 @@ public class Game
             if (Board[position.x, position.y + i] != "" && Board[position.x, position.y + i][1] == 'P')
             {
                 // If opposite colour
-                if (Board[position.x, position.y + i][0] == 'w' ^ _isWhiteTurn)
+                if (!IsCurrentPlayerColour(Board[position.x, position.y + i]))
                 {  // If can be taken en passant
                     if (Board[position.x, position.y + i][2] == '1')
                     {
@@ -413,7 +474,7 @@ public class Game
                     // If square to the left/right and up 1 is empty OR is of opposite colour to the current player
                     if (Board[position.x + j * i, position.y + k * (3 - i)] != "")
                     {
-                        if (!(Board[position.x + j * i, position.y + k * (3 - i)][0] == 'w' ^ _isWhiteTurn))
+                        if (IsCurrentPlayerColour(Board[position.x + j * i, position.y + k * (3 - i)]))
                         {
                             continue;
                         } 
@@ -487,7 +548,7 @@ public class Game
             {
                 isCollision = true;
 
-                if (!(Board[position.x + i * xMultiplier, position.y - i][0] == 'w' ^ _isWhiteTurn))
+                if (IsCurrentPlayerColour(Board[position.x + i * xMultiplier, position.y - i]))
                 {
                     break;
                 }
@@ -506,7 +567,7 @@ public class Game
             {
                 isCollision = true;
 
-                if (!(Board[position.x - i * xMultiplier, position.y + i][0] == 'w' ^ _isWhiteTurn))
+                if (IsCurrentPlayerColour(Board[position.x - i * xMultiplier, position.y + i]))
                 {
                     break;
                 }
@@ -548,7 +609,7 @@ public class Game
             } 
             isCollision = true;
             // If same colour
-            if (!(Board[position.x - i, position.y][0] == 'w' ^ _isWhiteTurn))
+            if (IsCurrentPlayerColour(Board[position.x - i, position.y]))
             {
                 break;
             }
@@ -569,7 +630,7 @@ public class Game
             } 
             isCollision = true;
             // If same colour
-            if (!(Board[position.x + i, position.y][0] == 'w' ^ _isWhiteTurn))
+            if (IsCurrentPlayerColour(Board[position.x + i, position.y]))
             {
                 break;
             }
@@ -590,7 +651,7 @@ public class Game
             } 
             isCollision = true;
             // If same colour
-            if (!(Board[position.x, position.y + i][0] == 'w' ^ _isWhiteTurn))
+            if (IsCurrentPlayerColour(Board[position.x, position.y + i]))
             {
                 break;
             }
@@ -611,7 +672,7 @@ public class Game
             } 
             isCollision = true;
             // If same colour
-            if (!(Board[position.x, position.y - i][0] == 'w' ^ _isWhiteTurn))
+            if (IsCurrentPlayerColour(Board[position.x, position.y - i]))
             {
                 break;
             }
@@ -665,7 +726,7 @@ public class Game
                 if (Board[position.x + i, position.y + j] == "")
                 {
                     moves.AddNode((position.x + i, position.y + j));
-                } else if (Board[position.x + i, position.y + j][0] == 'w' ^ _isWhiteTurn)
+                } else if (!IsCurrentPlayerColour(Board[position.x + i, position.y + j]))
                 {
                     moves.AddNode((position.x + i, position.y + j));
                 }
@@ -673,25 +734,23 @@ public class Game
         }
         
         // Castling
-        if (Board[position.x, position.y][2] == '0')
+        if (Board[position.x, position.y][2] != '0') return moves.Head is null ? null : moves;
+        // If rook hasn't moved and there is no piece between the king and the rook
+        if (Board[position.x, 0][1..] == "R0" && 
+            Board[position.x, 1] == "" && !IsKingInCheck((position.x, 1), _kingPosition) &&
+            Board[position.x, 2] == "" && !IsKingInCheck((position.x, 2), _kingPosition) &&
+            Board[position.x, 3] == "" && !IsKingInCheck((position.x, 3), _kingPosition)
+           )
         {
-            // If rook hasn't moved and there is no piece between the king and the rook
-            if (Board[position.x, 0][1..] == "R0" && 
-                Board[position.x, 1] == "" && !IsKingInCheck((position.x, 1), _kingPosition) &&
-                Board[position.x, 2] == "" && !IsKingInCheck((position.x, 2), _kingPosition) &&
-                Board[position.x, 3] == "" && !IsKingInCheck((position.x, 3), _kingPosition)
-                )
-            {
-                moves.AddNode((position.x, 2));
-            }
+            moves.AddNode((position.x, 2));
+        }
 
-            if (Board[position.x, 7][1..] == "R0" && 
-                Board[position.x, 5] == "" && !IsKingInCheck((position.x, 5), _kingPosition) &&
-                Board[position.x, 6] == "" && !IsKingInCheck((position.x, 6), _kingPosition)
-                )
-            {
-                moves.AddNode((position.x, 6));
-            }
+        if (Board[position.x, 7][1..] == "R0" && 
+            Board[position.x, 5] == "" && !IsKingInCheck((position.x, 5), _kingPosition) &&
+            Board[position.x, 6] == "" && !IsKingInCheck((position.x, 6), _kingPosition)
+           )
+        {
+            moves.AddNode((position.x, 6));
         }
 
         return moves.Head is null ? null : moves;

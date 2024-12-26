@@ -69,14 +69,6 @@ public partial class MainWindow : Window
         }
         
         InitializeBoard(moves);
-
-        Node<(int, int)>? node = moves.Head;
-        
-        while (node is not null)
-        {
-            Console.WriteLine(node.Data);
-            node = node.NextNode;
-        }
     }
 
     private static string GetSymbol(string piece)

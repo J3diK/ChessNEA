@@ -7,15 +7,31 @@
         Title="ChessNEA"
         CanResize="False"
         Height="1000"
-        Width="1400">
+        Width="1600">
     
-    <Grid ColumnDefinitions="1000, *">
-        <Image Grid.Column="0" Source="/Assets/Images/Board.png" Width="800"/>
-        <UniformGrid Grid.Column="0" x:Name="BoardGrid"
-                     Width="800"
-                     Height="800"
-                     Rows="8"
-                     Columns="8">
-        </UniformGrid>
+    <Grid ColumnDefinitions="900,  *">
+        <Grid Grid.Column="0" RowDefinitions="100, *, 100">
+            <Image Grid.Row="1" Source="/Assets/Images/Board.png" Width="800"/>
+            <UniformGrid Grid.Row="1" Grid.Column="0" x:Name="BoardGrid"
+                         Width="800"
+                         Height="800"
+                         Rows="8"
+                         Columns="8">
+            </UniformGrid>
+            
+            <Grid Grid.Row="0" ColumnDefinitions="100, *" RowDefinitions="70, *">
+                <TextBlock x:Name="TopPlayer" Grid.Column="1" Grid.Row="1" Text="Player 1" FontSize="20"/>
+            </Grid>
+            
+            <Grid Grid.Row="2" ColumnDefinitions="100, *" RowDefinitions="10, 60">
+                <TextBlock x:Name="BottomPlayer" Grid.Column="1" Grid.Row="1" Text="Player 1" FontSize="20"/>
+            </Grid>
+        </Grid>
+        
+        <StackPanel Grid.Column="1" Orientation="Vertical">
+            <Separator Height="90" Background="Transparent"/>
+            <TextBlock Text="Player 1" FontSize="20"/>
+            <TextBlock Text="Player 2" FontSize="20"/>
+        </StackPanel>
     </Grid>
 </Window>
