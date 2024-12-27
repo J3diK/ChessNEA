@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="150" d:DesignHeight="75"
+        x:Class="ChessNEA.NewGameConfirmation"
+        Title="NewGameConfirmation"
+        CanResize="False"
+        Height="150"
+        Width="150"
+        >
+    <StackPanel>
+        <StackPanel Orientation="Horizontal">
+            <Label>White</Label>
+            <ToggleSwitch OnContent="" OffContent="" Foreground="White"
+                          x:Name="IsWhite"/>
+            <Label>Black</Label>
+        </StackPanel>
+        <Button Click="ClickButtonNewGame">New Game</Button>
+    </StackPanel>
+    
+</Window>
