@@ -49,16 +49,21 @@ public class Game
 
     private (int x, int y) _whiteKingPosition = (0, 4);
     private (int x, int y) _blackKingPosition = (7, 4);
-    private (int x, int y) _kingPosition = (0, 4);
     public bool IsFinished;
     public double Score;
-    private bool _isWhiteTurn = true;
+    private bool _isWhiteTurn;
     private int _movesSincePawnOrCapture;
+    public ((int oldX, int oldY), (int newX, int newY)) LastMove;
 
-    private Dictionary<int[], int> _boardStates;
+    private readonly Dictionary<int[], int> _boardStates;
 
-    public Game(bool isPlayerWhite, bool isLiveGame)
+    public Game(bool isWhiteTurn, string[,]? board = null)
     {
+        if (board is not null)
+        {
+            Board = board;
+        }
+        _isWhiteTurn = isWhiteTurn;
         _boardStates = new Dictionary<int[], int>(new IntArrayComparer())
         {
             { EncodeBoard(Board), 1 }
@@ -77,13 +82,28 @@ public class Game
         }
     }
     
+    public int[] GetHash()
+    {
+        int[] hash = new int[8];
+        
+        foreach (int[] boardState in _boardStates.Keys)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                hash[i] ^= boardState[i];
+            }
+        }
+
+        return hash;
+    }
+    
     private void CheckRepeatPositions()
     {
         int[] boardState = EncodeBoard(Board);
         
         UpdateBoardStates(boardState);
         if (_boardStates[boardState] != 3) return;
-        Score = 0.5;
+        Score = 0;
         IsFinished = true;
     }
     
@@ -234,7 +254,6 @@ public class Game
             _whiteKingPosition = position;
         else
             _blackKingPosition = position;
-        _kingPosition = position;
     }
 
     /// <summary>
@@ -265,6 +284,8 @@ public class Game
     /// <param name="newPosition">The position the piece is to move to</param>
     public void MovePiece((int x, int y) oldPosition, (int x, int y) newPosition)
     {
+        LastMove = (oldPosition, newPosition);
+        
         if (Board[oldPosition.x, oldPosition.y][1] == 'P')
         {
             _movesSincePawnOrCapture = -1;
@@ -321,12 +342,12 @@ public class Game
 
         if (IsCheckmate())
         {
-            Score = _isWhiteTurn ? -1 : 1;
+            Score = _isWhiteTurn ? double.NegativeInfinity : double.PositiveInfinity;
             IsFinished = true;
         }
         else if (_movesSincePawnOrCapture == 50)
         {
-            Score = 0.5;
+            Score = 0;
             IsFinished = true;
         }
 
@@ -652,6 +673,7 @@ public class Game
     /// <returns>A list of possible moves</returns>
     private LinkedList.LinkedList<(int, int)>? GetMovesKing((int x, int y) position)
     {
+        (int, int) kingPosition = _isWhiteTurn ? _whiteKingPosition : _blackKingPosition;
         LinkedList.LinkedList<(int x, int y)> moves = new();
 
         for (int i = -1; i <= 1; i++)
@@ -659,8 +681,8 @@ public class Game
         {
             if (i == 0 && j == 0) continue;
 
-            if ((position.x + i < 0) | (position.x + i > 7)) continue;
-            if ((position.y + i < 0) | (position.y + i > 7)) continue;
+            if ((position.x + i < 0) | (position.x + i > 7) |
+                (position.y + j < 0) | (position.y + j > 7)) continue;
 
             // If opposite colour OR empty
             if (Board[position.x + i, position.y + j] == "")
@@ -672,16 +694,18 @@ public class Game
         // Castling
         if (Board[position.x, position.y][2] != '0') return moves.Head is null ? null : moves;
         // If rook hasn't moved and there is no piece between the king and the rook
-        if (Board[position.x, 0][1..] == "R0" &&
-            Board[position.x, 1] == "" && !IsKingInCheck((position.x, 1), _kingPosition) &&
-            Board[position.x, 2] == "" && !IsKingInCheck((position.x, 2), _kingPosition) &&
-            Board[position.x, 3] == "" && !IsKingInCheck((position.x, 3), _kingPosition)
+        if (Board[position.x, 0] != "" &&
+            Board[position.x, 0][1..] == "R0" &&
+            Board[position.x, 1] == "" && !IsKingInCheck((position.x, 1), kingPosition) &&
+            Board[position.x, 2] == "" && !IsKingInCheck((position.x, 2), kingPosition) &&
+            Board[position.x, 3] == "" && !IsKingInCheck((position.x, 3), kingPosition)
            )
             moves.AddNode((position.x, 2));
 
-        if (Board[position.x, 7][1..] == "R0" &&
-            Board[position.x, 5] == "" && !IsKingInCheck((position.x, 5), _kingPosition) &&
-            Board[position.x, 6] == "" && !IsKingInCheck((position.x, 6), _kingPosition)
+        if (Board[position.x, 7] != "" &&
+            Board[position.x, 7][1..] == "R0" &&
+            Board[position.x, 5] == "" && !IsKingInCheck((position.x, 5), kingPosition) &&
+            Board[position.x, 6] == "" && !IsKingInCheck((position.x, 6), kingPosition)
            )
             moves.AddNode((position.x, 6));
 

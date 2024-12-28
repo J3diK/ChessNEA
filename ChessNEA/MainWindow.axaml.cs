@@ -13,7 +13,11 @@ namespace ChessNEA;
 public partial class MainWindow : Window
 {
     private static bool _isPlayerWhite = true;
-    private Game _game = new(_isPlayerWhite, true);
+    private Bot _bot = new()
+    {
+        IsWhite = false
+    };
+    private Game _game = new(_isPlayerWhite);
     private (int x, int y) _selectedPiece;
     private bool _isWhiteOnBottom = true;
 
@@ -47,7 +51,7 @@ public partial class MainWindow : Window
                 };
                 if (moves is not null && moves.Contains((x, y)))
                 {
-                    button.Click += (_, _) => MovePiece(((int x, int y))button.CommandParameter);
+                    button.Click += (_, _) => MovePiecePlayer(((int x, int y))button.CommandParameter);
                 }
                 else
                 {
@@ -65,6 +69,16 @@ public partial class MainWindow : Window
             }
         }
     }
+    
+    private async void MovePiecePlayer((int x, int y) position)
+    {
+        MovePiece(position);
+        if (_game.IsFinished) return;
+        
+        ((int oldX, int oldY), (int newX, int newY)) move = await _bot.GetMove(_game);
+        _selectedPiece = move.Item1;
+        MovePiece(move.Item2);
+    }
 
     private void MovePiece((int x, int y) position)
     {
@@ -74,9 +88,9 @@ public partial class MainWindow : Window
         if (!_game.IsFinished) return;
         string message = _game.Score switch
         {
-            0.5 => "Draw!",
-            1 => "White wins!",
-            -1 => "Black wins!",
+            0 => "Draw!",
+            double.PositiveInfinity => "White wins!",
+            double.NegativeInfinity => "Black wins!",
             _ => ""
         };
         WinnerText.Content = message;
@@ -106,7 +120,7 @@ public partial class MainWindow : Window
     
     private void SetupNewGame()
     {
-        _game = new Game(_isPlayerWhite, true);
+        _game = new Game(_isPlayerWhite);
         _selectedPiece = (0, 0);
         _isWhiteOnBottom = _isPlayerWhite;
         InitializeBoard();
