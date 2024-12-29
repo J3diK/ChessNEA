@@ -6,10 +6,72 @@ using ChessNEA.Logic.Objects.LinkedList;
 
 namespace ChessNEA.Logic.Objects;
 
-// TODO: https://www.chessprogramming.org/Simplified_Evaluation_Function
+// https://www.chessprogramming.org/Simplified_Evaluation_Function
 public class Bot
 {
-    private const int Depth = 5;
+    private static readonly int[,] PawnTable = {
+        {  0,  0,  0,  0,  0,  0,  0,  0 },
+        { 50, 50, 50, 50, 50, 50, 50, 50 },
+        { 10, 10, 20, 30, 30, 20, 10, 10 },
+        {  5,  5, 10, 25, 25, 10,  5,  5 },
+        {  0,  0,  0, 20, 20,  0,  0,  0 },
+        {  5, -5,-10,  0,  0,-10, -5,  5 },
+        {  5, 10, 10,-20,-20, 10, 10,  5 },
+        {  0,  0,  0,  0,  0,  0,  0,  0 }
+    };
+    private static readonly int[,] KnightTable = {
+        { -50,-40,-30,-30,-30,-30,-40,-50 },
+        { -40,-20,  0,  0,  0,  0,-20,-40 },
+        { -30,  0, 10, 15, 15, 10,  0,-30 },
+        { -30,  5, 15, 20, 20, 15,  5,-30 },
+        { -30,  0, 15, 20, 20, 15,  0,-30 },
+        { -30,  5, 10, 15, 15, 10,  5,-30 },
+        { -40,-20,  0,  5,  5,  0,-20,-40 },
+        { -50,-40,-30,-30,-30,-30,-40,-50 }
+    };
+    private static readonly int[,] BishopTable = {
+        { -20,-10,-10,-10,-10,-10,-10,-20 },
+        { -10,  0,  0,  0,  0,  0,  0,-10 },
+        { -10,  0,  5, 10, 10,  5,  0,-10 },
+        { -10,  5,  5, 10, 10,  5,  5,-10 },
+        { -10,  0, 10, 10, 10, 10,  0,-10 },
+        { -10, 10, 10, 10, 10, 10, 10,-10 },
+        { -10,  5,  0,  0,  0,  0,  5,-10 },
+        { -20,-10,-10,-10,-10,-10,-10,-20 }
+    };
+    private static readonly int[,] RookTable = {
+        {  0,  0,  0,  0,  0,  0,  0,  0 },
+        {  5, 10, 10, 10, 10, 10, 10,  5 },
+        { -5,  0,  0,  0,  0,  0,  0, -5 },
+        { -5,  0,  0,  0,  0,  0,  0, -5 },
+        { -5,  0,  0,  0,  0,  0,  0, -5 },
+        { -5,  0,  0,  0,  0,  0,  0, -5 },
+        { -5,  0,  0,  0,  0,  0,  0, -5 },
+        {  0,  0,  0,  5,  5,  0,  0,  0 }
+    };
+    private static readonly int[,] QueenTable = {
+        { -20,-10,-10, -5, -5,-10,-10,-20 },
+        { -10,  0,  0,  0,  0,  0,  0,-10 },
+        { -10,  0,  5,  5,  5,  5,  0,-10 },
+        { -5,  0,  5,  5,  5,  5,  0, -5 },
+        {  0,  0,  5,  5,  5,  5,  0, -5 },
+        { -10,  5,  5,  5,  5,  5,  0,-10 },
+        { -10,  0,  5,  0,  0,  0,  0,-10 },
+        { -20,-10,-10, -5, -5,-10,-10,-20 }
+    };
+    private static readonly int[,] KingTable = {
+        { -30,-40,-40,-50,-50,-40,-40,-30 },
+        { -30,-40,-40,-50,-50,-40,-40,-30 },
+        { -30,-40,-40,-50,-50,-40,-40,-30 },
+        { -30,-40,-40,-50,-50,-40,-40,-30 },
+        { -20,-30,-30,-40,-40,-30,-30,-20 },
+        { -10,-20,-20,-20,-20,-20,-20,-10 },
+        {  20, 20,  0,  0,  0,  0, 20, 20 },
+        {  20, 30, 10,  0,  0, 10, 30, 20 }
+    };
+
+    private const int Depth = 6;
+    private const double SequentialDepthPercentage = 0.2; // Jamboree, https://courses.cs.washington.edu/courses/cse332/16au/handouts/games.pdf
     public bool IsWhite;
     private readonly ConcurrentDictionary<int[], (double, ((int oldX, int oldY), (int newX, int newY)))> _transpositionTable = new();
 
@@ -17,7 +79,7 @@ public class Bot
     {
         return (await Negamax(game, Depth, IsWhite ? 1 : -1, double.NegativeInfinity, double.PositiveInfinity)).Item2;
     }
-
+    
     private Task<(double, ((int oldX, int oldY), (int newX, int newY)))> Negamax(Game game, int depth, int colour,
         double alpha, double beta)
     {
@@ -43,22 +105,23 @@ public class Bot
             childGamesList.Add(currentNode.Data!);
             currentNode = currentNode.NextNode;
         }
-
-        ConcurrentBag<(double, ((int oldX, int oldY), (int newX, int newY)))> resultsBag = [];
-
-        double alpha1 = alpha;
-        Parallel.ForEach(childGamesList, child =>
+        
+        int sequentialDepth = (int)(childGamesList.Count * SequentialDepthPercentage);
+        
+        List<Game> childGamesListSequential = childGamesList.GetRange(0, Math.Min(
+            sequentialDepth, childGamesList.Count));
+        int length = childGamesList.Count - sequentialDepth;
+        if (length < 0) length = 0;
+        List<Game> childGamesListParallel = childGamesList.GetRange(Math.Min(sequentialDepth, childGamesList.Count), length);
+        
+        
+        foreach (Game child in childGamesListSequential)
         {
-            double value2 = -(Negamax(child, depth - 1, -colour, -beta, -alpha1).Result.Item1);
-            resultsBag.Add((value2, child.LastMove));
-        });
-
-        foreach ((double, ((int oldX, int oldY), (int newX, int newY))) result in resultsBag)
-        {
-            if (result.Item1 > value)
+            double value2 = -Negamax(child, depth - 1, -colour, -beta, -alpha).Result.Item1;
+            if (value2 > value)
             {
-                value = result.Item1;
-                move = result.Item2;
+                value = value2;
+                move = child.LastMove;
             }
             alpha = Math.Max(alpha, value);
             if (alpha >= beta)
@@ -66,9 +129,27 @@ public class Bot
                 break;
             }
         }
+        
+        Parallel.ForEach(childGamesListParallel, (child, state) =>
+        {
+            double value2 = -Negamax(child, depth - 1, -colour, -beta, -alpha).Result.Item1;
+            lock (this)
+            {
+                if (value2 > value)
+                {
+                    value = value2;
+                    move = child.LastMove;
+                }
+                alpha = Math.Max(alpha, value);
+                if (alpha >= beta)
+                {
+                    state.Break();
+                }
+            }
+        });
+        
 
-        _transpositionTable[gameHash] = (value, move);
-
+        _transpositionTable[gameHash] = (depth, move);
         return Task.FromResult((value, move));
     }
 
@@ -98,6 +179,28 @@ public class Bot
 
         return childGames;
     }
+    
+    private static int GetPieceSquareValue(string piece, int x, int y)
+    {
+        if (piece[0] == 'b')
+        {
+            x = 7 - x;
+            y = 7 - y;
+        }
+
+        int value = piece[1] switch
+        {
+            'P' => PawnTable[x, y],
+            'N' => KnightTable[x, y],
+            'B' => BishopTable[x, y],
+            'R' => RookTable[x, y],
+            'Q' => QueenTable[x, y],
+            'K' => KingTable[x, y],
+            _ => 0
+        };
+
+        return piece[0] == 'w' ? value : -value;
+    }
 
     private static double Evaluate(Game game)
     {
@@ -114,15 +217,16 @@ public class Bot
                 if (game.Board[i, j] == "") continue;
                 int pieceValue = game.Board[i, j][1] switch
                 {
-                    'P' => 1,
-                    'N' => 3,
-                    'B' => 3,
-                    'R' => 5,
-                    'Q' => 9,
+                    'P' => 100,
+                    'N' => 320,
+                    'B' => 330,
+                    'R' => 500,
+                    'Q' => 900,
                     'K' => 0,
                     _ => throw new ArgumentException("Invalid piece")
                 };
                 score += pieceValue * (game.Board[i, j][0] == 'w' ? 1 : -1);
+                score += GetPieceSquareValue(game.Board[i, j], i, j);
             }
         }
 

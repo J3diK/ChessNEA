@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -13,7 +12,7 @@ namespace ChessNEA;
 public partial class MainWindow : Window
 {
     private static bool _isPlayerWhite = true;
-    private Bot _bot = new()
+    private readonly Bot _bot = new()
     {
         IsWhite = false
     };
@@ -74,10 +73,20 @@ public partial class MainWindow : Window
     {
         MovePiece(position);
         if (_game.IsFinished) return;
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            BlockInput.IsVisible = true;
+        });
         
         ((int oldX, int oldY), (int newX, int newY)) move = await _bot.GetMove(_game);
         _selectedPiece = move.Item1;
         MovePiece(move.Item2);
+        
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            BlockInput.IsVisible = false;
+        });
     }
 
     private void MovePiece((int x, int y) position)

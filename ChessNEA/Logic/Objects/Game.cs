@@ -82,19 +82,32 @@ public class Game
         }
     }
     
+    public void MakeNullMove()
+    {
+        if (_isWhiteTurn) _movesSincePawnOrCapture++;
+        _isWhiteTurn = !_isWhiteTurn;
+    }
+    
+    public void UndoNullMove()
+    {
+        if (!_isWhiteTurn) _movesSincePawnOrCapture--;
+        _isWhiteTurn = !_isWhiteTurn;
+    }
+    
     public int[] GetHash()
     {
-        int[] hash = new int[8];
-        
-        foreach (int[] boardState in _boardStates.Keys)
-        {
-            for (int i = 0; i < 8; i++)
-            {
-                hash[i] ^= boardState[i];
-            }
-        }
+        // int[] hash = new int[8];
+        //
+        // foreach (int[] boardState in _boardStates.Keys)
+        // {
+        //     for (int i = 0; i < 8; i++)
+        //     {
+        //         hash[i] ^= boardState[i];
+        //     }
+        // }
+        // return hash;
 
-        return hash;
+        return EncodeBoard(Board);
     }
     
     private void CheckRepeatPositions()
@@ -107,7 +120,7 @@ public class Game
         IsFinished = true;
     }
     
-    private static int[] EncodeBoard(string[,] board)
+    public static int[] EncodeBoard(string[,] board)
     {
         int[] boardState = new int[8];
 
@@ -164,7 +177,7 @@ public class Game
         return !((piece[0] == 'w') ^ _isWhiteTurn);
     }
 
-    private bool IsKingInCheck((int x, int y)? newPosition = null, (int x, int y)? oldPosition = null)
+    public bool IsKingInCheck((int x, int y)? newPosition = null, (int x, int y)? oldPosition = null)
     {
         (int x, int y) kingPosition = _isWhiteTurn ? _whiteKingPosition : _blackKingPosition;
         bool isMoving = newPosition is not null && oldPosition is not null;

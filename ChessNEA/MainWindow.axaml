@@ -34,6 +34,16 @@
                        VerticalContentAlignment="Center"
                        HorizontalContentAlignment="Center"/>
             
+            <Label Grid.Row="1" Grid.Column="0" x:Name="BlockInput"
+                       HorizontalAlignment="Center" 
+                       VerticalAlignment="Center"
+                       Width="800"
+                       Height="800"
+                       IsVisible="False"
+                       VerticalContentAlignment="Center"
+                       HorizontalContentAlignment="Center"
+                       Background="Transparent"/>
+            
             <Grid Grid.Row="0" ColumnDefinitions="100, *" RowDefinitions="70, *">
                 <TextBlock x:Name="TopPlayer" Grid.Column="1" Grid.Row="1" Text="Player 1" FontSize="20"/>
             </Grid>
