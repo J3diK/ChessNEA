@@ -6,4 +6,5 @@
 	<s:String x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=C3CF419A_002D13B8_002D4DC9_002D8E1C_002D95916E9A3D03_002Fd_003ALogic_002Fd_003AObjects_002Ff_003AGame_002Ecs/@EntryIndexedValue">ForceIncluded</s:String>
 	<s:String x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=C3CF419A_002D13B8_002D4DC9_002D8E1C_002D95916E9A3D03_002Fd_003ALogic_002Fd_003AObjects_002Ff_003AIntArrayComparer_002Ecs/@EntryIndexedValue">ExplicitlyExcluded</s:String>
 	<s:String x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=C3CF419A_002D13B8_002D4DC9_002D8E1C_002D95916E9A3D03_002Ff_003AProgram_002Ecs/@EntryIndexedValue">ForceIncluded</s:String>
-	<s:String x:Key="/Default/CodeInspection/PencilsConfiguration/ActualSeverity/@EntryValue">INFO</s:String></wpf:ResourceDictionary>
+	<s:String x:Key="/Default/CodeInspection/PencilsConfiguration/ActualSeverity/@EntryValue">INFO</s:String>
+	<s:Boolean x:Key="/Default/Dpa/IsEnabledInDebug/@EntryValue">True</s:Boolean></wpf:ResourceDictionary>

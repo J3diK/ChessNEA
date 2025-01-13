@@ -159,6 +159,19 @@ public class Game
 
         return boardState;
     }
+
+    public Game Copy()
+    {
+        return new Game(_isWhiteTurn, Board.Clone() as string[,])
+        {
+            _whiteKingPosition = _whiteKingPosition,
+            _blackKingPosition = _blackKingPosition,
+            _movesSincePawnOrCapture = _movesSincePawnOrCapture,
+            Score = Score,
+            IsFinished = IsFinished,
+            LastMove = LastMove
+        };
+    }
     
     private bool IsCheckmate()
     {

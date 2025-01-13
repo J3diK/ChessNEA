@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using ChessNEA.Logic.Objects.LinkedList;
 
@@ -73,7 +71,7 @@ public class Bot
     };
 
     private const int Depth = 6;
-    private const double SequentialDepthPercentage = 0.2; // Jamboree, https://courses.cs.washington.edu/courses/cse332/16au/handouts/games.pdf
+    private const double SequentialDepthPercentage = 0.5; // Jamboree, https://courses.cs.washington.edu/courses/cse332/16au/handouts/games.pdf
     public bool IsWhite;
     private readonly ConcurrentDictionary<int[], (double, ((int oldX, int oldY), (int newX, int newY)))> _transpositionTable = new();
 
@@ -131,7 +129,72 @@ public class Bot
     
     public async Task<((int oldX, int oldY), (int newX, int newY))> GetMove(Game game)
     {
-        return (await Negamax(game, Depth, IsWhite ? 1 : -1, double.NegativeInfinity, double.PositiveInfinity)).Item2;
+        // return (await Negamax(game, Depth, IsWhite ? 1 : -1, double.NegativeInfinity, double.PositiveInfinity)).Item2;
+        return (await PrincipalVariationSearch(game, Depth, IsWhite ? 1 : -1, double.NegativeInfinity, double.PositiveInfinity)).Item2;
+    }
+    
+    // Alternative to Negamax, PVS, https://www.chessprogramming.org/Principal_Variation_Search
+    private Task<(double, ((int oldX, int oldY), (int newX, int newY)))> PrincipalVariationSearch(Game game, int depth,
+        int colour,
+        double alpha, double beta)
+    {
+        int[] gameHash = game.GetHash();
+        if (_transpositionTable.TryGetValue(gameHash, out (double, ((int oldX, int oldY), (int newX, int newY))) ttEntry) && ttEntry.Item1 >= depth)
+        {
+            return Task.FromResult(ttEntry);
+        }
+
+        if (depth == 0 || game.IsFinished)
+        {
+            return Task.FromResult((colour * Evaluate(game), ((-1, -1), (-1, -1))));
+        }
+        
+        LinkedList.LinkedList<((int x, int y), (int x, int y))> childGames = GetChildGames(game, colour);
+        ((int oldX, int oldY), (int newX, int newY)) move = ((-1, -1), (-1, -1));
+
+        List<((int x, int y), (int x, int y))> childGamesList = [];
+        Node<((int x, int y), (int x, int y))>? currentNode = childGames.Head;
+        while (currentNode != null)
+        {
+            childGamesList.Add(currentNode.Data);
+            currentNode = currentNode.NextNode;
+        }
+
+        childGamesList = MergeSort(game, childGamesList);
+
+        bool firstChild = true;
+        foreach (((int x, int y), (int x, int y)) child in childGamesList)
+        {
+            Game childGame = game.Copy();
+            childGame.MovePiece(child.Item1, child.Item2);
+            double score;
+            if (firstChild)
+            {
+                score = -PrincipalVariationSearch(childGame, depth - 1, -colour, -beta, -alpha).Result.Item1;
+                firstChild = false;
+            }
+            else
+            {
+                score = -PrincipalVariationSearch(childGame, depth - 1, -colour, -alpha - 1, -alpha).Result.Item1;
+                if (alpha < score && score < beta)
+                {
+                    score = -PrincipalVariationSearch(childGame, depth - 1, -colour, -beta, -alpha).Result.Item1;
+                }
+            }
+
+            if (score > alpha)
+            {
+                move = childGame.LastMove;
+            }
+            alpha = Math.Max(alpha, score);
+            if (alpha >= beta)
+            {
+                break;
+            }
+        }
+
+        _transpositionTable[gameHash] = (depth, move);
+        return Task.FromResult((alpha, move));
     }
     
     private Task<(double, ((int oldX, int oldY), (int newX, int newY)))> Negamax(Game game, int depth, int colour,
@@ -156,7 +219,7 @@ public class Bot
         Node<((int x, int y), (int x, int y))>? currentNode = childGames.Head;
         while (currentNode != null)
         {
-            childGamesList.Add(currentNode.Data!);
+            childGamesList.Add(currentNode.Data);
             currentNode = currentNode.NextNode;
         }
 
@@ -173,12 +236,13 @@ public class Bot
         
         foreach (((int x, int y), (int x, int y)) child in childGamesListSequential)
         {
-            // TODO: Copy game and make move
-            double value2 = -Negamax(child, depth - 1, -colour, -beta, -alpha).Result.Item1;
+            Game childGame = game.Copy();
+            childGame.MovePiece(child.Item1, child.Item2);
+            double value2 = -Negamax(childGame, depth - 1, -colour, -beta, -alpha).Result.Item1;
             if (value2 > value)
             {
                 value = value2;
-                move = child.LastMove;
+                move = childGame.LastMove;
             }
             alpha = Math.Max(alpha, value);
             if (alpha >= beta)
@@ -189,13 +253,15 @@ public class Bot
         
         Parallel.ForEach(childGamesListParallel, (child, state) =>
         {
-            double value2 = -Negamax(child, depth - 1, -colour, -beta, -alpha).Result.Item1;
+            Game childGame = game.Copy();
+            childGame.MovePiece(child.Item1, child.Item2);
+            double value2 = -Negamax(childGame, depth - 1, -colour, -beta, -alpha).Result.Item1;
             lock (this)
             {
                 if (value2 > value)
                 {
                     value = value2;
-                    move = child.LastMove;
+                    move = childGame.LastMove;
                 }
                 alpha = Math.Max(alpha, value);
                 if (alpha >= beta)
@@ -260,7 +326,8 @@ public class Bot
 
     private static double Evaluate(Game game, ((int x, int y), (int x, int y)) move)
     {
-        game.MovePiece(move.Item1, move.Item2);
+        Game gameToEvaluate = game.Copy();
+        gameToEvaluate.MovePiece(move.Item1, move.Item2);
         return EvaluateWithoutMove(game);
 
     }
