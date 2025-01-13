@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using ChessNEA.Logic.Objects.LinkedList;
 
@@ -75,6 +77,58 @@ public class Bot
     public bool IsWhite;
     private readonly ConcurrentDictionary<int[], (double, ((int oldX, int oldY), (int newX, int newY)))> _transpositionTable = new();
 
+    private static List<((int x, int y), (int x, int y))> MergeSort(Game game, List<((int x, int y), (int x, int y))> games)
+    {
+        if (games.Count <= 1)
+        {
+            return games;
+        }
+        
+        List<((int x, int y), (int x, int y))> left = games.GetRange(0, games.Count / 2);
+        List<((int x, int y), (int x, int y))> right = games.GetRange(games.Count / 2, games.Count - games.Count / 2);
+        
+        Task<List<((int x, int y), (int x, int y))>> leftTask = Task.Run(() => MergeSort(game, left));
+        Task<List<((int x, int y), (int x, int y))>> rightTask = Task.Run(() => MergeSort(game, right));
+        Task.WaitAll(leftTask, rightTask);
+        
+        return Merge(game, leftTask.Result, rightTask.Result);
+    }
+
+    private static List<((int x, int y), (int x, int y))> Merge(Game game, List<((int x, int y), (int x, int y))> left, List<((int x, int y), (int x, int y))> right)
+    {
+        List<((int x, int y), (int x, int y))> merged = [];
+        int leftIndex = 0;
+        int rightIndex = 0;
+        
+        while (leftIndex < left.Count && rightIndex < right.Count)
+        {
+            if (Evaluate(game, left[leftIndex]) > Evaluate(game, right[rightIndex]))
+            {
+                merged.Add(left[leftIndex]);
+                leftIndex++;
+            }
+            else
+            {
+                merged.Add(right[rightIndex]);
+                rightIndex++;
+            }
+        }
+        
+        while (leftIndex < left.Count)
+        {
+            merged.Add(left[leftIndex]);
+            leftIndex++;
+        }
+        
+        while (rightIndex < right.Count)
+        {
+            merged.Add(right[rightIndex]);
+            rightIndex++;
+        }
+        
+        return merged;
+    }
+    
     public async Task<((int oldX, int oldY), (int newX, int newY))> GetMove(Game game)
     {
         return (await Negamax(game, Depth, IsWhite ? 1 : -1, double.NegativeInfinity, double.PositiveInfinity)).Item2;
@@ -95,28 +149,31 @@ public class Bot
         }
 
         double value = double.NegativeInfinity;
-        LinkedList.LinkedList<Game> childGames = GetChildGames(game, colour);
+        LinkedList.LinkedList<((int x, int y), (int x, int y))> childGames = GetChildGames(game, colour);
         ((int oldX, int oldY), (int newX, int newY)) move = ((-1, -1), (-1, -1));
 
-        List<Game> childGamesList = [];
-        Node<Game>? currentNode = childGames.Head;
+        List<((int x, int y), (int x, int y))> childGamesList = [];
+        Node<((int x, int y), (int x, int y))>? currentNode = childGames.Head;
         while (currentNode != null)
         {
             childGamesList.Add(currentNode.Data!);
             currentNode = currentNode.NextNode;
         }
+
+        childGamesList = MergeSort(game, childGamesList);
         
         int sequentialDepth = (int)(childGamesList.Count * SequentialDepthPercentage);
         
-        List<Game> childGamesListSequential = childGamesList.GetRange(0, Math.Min(
+        List<((int x, int y), (int x, int y))> childGamesListSequential = childGamesList.GetRange(0, Math.Min(
             sequentialDepth, childGamesList.Count));
         int length = childGamesList.Count - sequentialDepth;
         if (length < 0) length = 0;
-        List<Game> childGamesListParallel = childGamesList.GetRange(Math.Min(sequentialDepth, childGamesList.Count), length);
+        List<((int x, int y), (int x, int y))> childGamesListParallel = childGamesList.GetRange(Math.Min(sequentialDepth, childGamesList.Count), length);
         
         
-        foreach (Game child in childGamesListSequential)
+        foreach (((int x, int y), (int x, int y)) child in childGamesListSequential)
         {
+            // TODO: Copy game and make move
             double value2 = -Negamax(child, depth - 1, -colour, -beta, -alpha).Result.Item1;
             if (value2 > value)
             {
@@ -153,9 +210,9 @@ public class Bot
         return Task.FromResult((value, move));
     }
 
-    private static LinkedList.LinkedList<Game> GetChildGames(Game game, int colour)
+    private static LinkedList.LinkedList<((int x, int y), (int x, int y))> GetChildGames(Game game, int colour)
     {
-        LinkedList.LinkedList<Game> childGames = new();
+        LinkedList.LinkedList<((int x, int y), (int x, int y))> childGames = new();
         for (int i = 0; i < 8; i++)
         {
             for (int j = 0; j < 8; j++)
@@ -169,9 +226,7 @@ public class Bot
                 Node<(int x, int y)>? currentMove = moves.Head;
                 while (currentMove is not null)
                 {
-                    Game newGame = new(colour == 1, (string[,])game.Board.Clone());
-                    newGame.MovePiece((i, j), currentMove.Data);
-                    childGames.AddNode(newGame);
+                    childGames.AddNode(((i, j), currentMove.Data));
                     currentMove = currentMove.NextNode;
                 }
             }
@@ -179,6 +234,7 @@ public class Bot
 
         return childGames;
     }
+    
     
     private static int GetPieceSquareValue(string piece, int x, int y)
     {
@@ -202,7 +258,19 @@ public class Bot
         return piece[0] == 'w' ? value : -value;
     }
 
+    private static double Evaluate(Game game, ((int x, int y), (int x, int y)) move)
+    {
+        game.MovePiece(move.Item1, move.Item2);
+        return EvaluateWithoutMove(game);
+
+    }
+
     private static double Evaluate(Game game)
+    {
+        return EvaluateWithoutMove(game);
+    }
+
+    private static double EvaluateWithoutMove(Game game)
     {
         if (game.IsFinished)
         {
