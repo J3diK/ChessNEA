@@ -23,7 +23,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        InitializeBoard();
+        SetupNewGame();
     }
 
     private void InitializeBoard(LinkedList<(int, int)>? moves = null)
@@ -139,7 +139,7 @@ public partial class MainWindow : Window
         ResignOrNewGameButton.Click += ClickButtonResign;
     }
     
-    private void ClickButtonResign(object? sender, RoutedEventArgs e)
+    private static void ClickButtonResign(object? sender, RoutedEventArgs e)
     {
         throw new NotImplementedException();
     }
@@ -161,7 +161,10 @@ public partial class MainWindow : Window
         Node<(int x, int y)>? node = moves.Head;
         while (node is not null)
         {
-            ((TextBlock)DisplayMovesGrid.Children[8 * (7 - node.Data.x) + node.Data.y]).Text = "\u2b24";
+            int x = _isWhiteOnBottom ? 7 - node.Data.x : node.Data.x;
+            int y = _isWhiteOnBottom ? node.Data.y : 7 - node.Data.y;
+            
+            ((TextBlock)DisplayMovesGrid.Children[8 * x + y]).Text = "\u2b24";
             node = node.NextNode;
         }
     }
@@ -191,7 +194,7 @@ public partial class MainWindow : Window
         };
     }
 
-    private void ClickButtonRotateBoard(object? sender, RoutedEventArgs routedEventArgs)
+    private void ClickButtonRotateBoard(object? sender, RoutedEventArgs e)
     {
         _isWhiteOnBottom = !_isWhiteOnBottom;
         InitializeBoard();
