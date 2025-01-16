@@ -81,6 +81,8 @@ public class Bot
     
     public bool IsWhite;
 
+    private const int MaxNegamaxTimeMs = 30_000;
+
     // private static List<((int x, int y), (int x, int y))> MergeSort(Game game, List<((int x, int y), (int x, int y))> games)
     // {
     //     if (games.Count <= 1)
@@ -140,7 +142,7 @@ public class Bot
     /// <returns>The move that the bot determines to be the best</returns>
     public Task<((int oldX, int oldY), (int newX, int newY))> GetMove(Game game)
     {
-        return FindBestMove(game, IsWhite ? 1 : -1, Environment.ProcessorCount, 30_000);
+        return FindBestMove(game, IsWhite ? 1 : -1, Environment.ProcessorCount);
     }
 
     // https://www.chessprogramming.org/Iterative_Deepening
@@ -152,17 +154,15 @@ public class Bot
     /// <param name="game">The current game</param>
     /// <param name="colour">1 if white, -1 if black</param>
     /// <param name="maxThreads">How many threads should be used</param>
-    /// <param name="maxTimeMs">Maximum time to run for in milliseconds</param>
     /// <returns>The move that the bot determines to be the best</returns>
-    private static Task<((int oldX, int oldY), (int newX, int newY))> FindBestMove(Game game, int colour, int maxThreads,
-        int maxTimeMs)
+    private static Task<((int oldX, int oldY), (int newX, int newY))> FindBestMove(Game game, int colour, int maxThreads)
     {
         DateTime startTime = DateTime.Now;
         List<Task> tasks = [];
         
         for (int threadId = 0; threadId < maxThreads; threadId++)
         {
-            tasks.Add(Task.Run(() => SearchWorker(game, colour, startTime, maxTimeMs)));
+            tasks.Add(Task.Run(() => SearchWorker(game, colour, startTime)));
         }
 
         Task.WaitAll(tasks.ToArray());
@@ -181,25 +181,23 @@ public class Bot
     /// <param name="game"></param>
     /// <param name="colour"></param>
     /// <param name="startTime"></param>
-    /// <param name="maxTimeMs"></param>
-    private static void SearchWorker(Game game, int colour, DateTime startTime, int maxTimeMs)
+    private static void SearchWorker(Game game, int colour, DateTime startTime)
     {
         // Deep copy
         Game localGame = game.Copy();
         double value = Evaluate(game);
-        ((int oldX, int oldY), (int newX, int newY)) bestMove;
 
         // Iterative deepening search
-        for (int depth = 1; ; depth++)
+        for (int depth = 1; depth < 100; depth++)
         {
-            if ((DateTime.Now - startTime).TotalMilliseconds > maxTimeMs)
+            if ((DateTime.Now - startTime).TotalMilliseconds > MaxNegamaxTimeMs) // TODO: add future times if needed
             {
-                Console.WriteLine(depth); // TODO: Remove, used for debugging
                 break;
             }
-            
-            if (depth == 1) (value, bestMove) = Negamax(localGame, depth, colour, Alpha, Beta, startTime, maxTimeMs);
-            else (value, bestMove) = Negamax(localGame, depth, colour, Alpha, Beta, startTime, maxTimeMs, value);
+
+            ((int oldX, int oldY), (int newX, int newY)) bestMove;
+            if (depth == 1) (value, bestMove) = Negamax(localGame, depth, colour, Alpha, Beta, startTime);
+            else (value, bestMove) = Negamax(localGame, depth, colour, Alpha, Beta, startTime, value);
 
             // Update the vote count for the move
             if (bestMove != ((-1, -1), (-1, -1)))
@@ -209,13 +207,87 @@ public class Bot
         }
     }
     
-    // TODO: Implement aspiration window, capture heuristics, killer move and history heuristics, quiescence search, search extensions, and null move pruning?
+    private static bool IsCapture(Game game, (int newX, int newY) newPos)
+    {
+        return game.Board[newPos.newX, newPos.newY] != "";
+    }
+
+    private static (double, ((int oldX, int oldY), (int newX, int newY))) QuiescenceSearch(Game game, int colour, 
+        double alpha, double beta)
+    {
+        // TODO: Zugzwangs in pawn endgames
+        double standPat = colour * Evaluate(game);
+        double value = standPat;
+        
+        if (value >= beta)
+        {
+            return (beta, ((-1, -1), (-1, -1)));
+        }
+        if (alpha < value)
+        {
+            alpha = value;
+        }
+
+        LinkedList.LinkedList<((int x, int y), (int x, int y))> childGames = GetChildGames(game, colour);
+        if (childGames.Head is null)
+        {
+            return (standPat, ((-1, -1), (-1, -1)));
+        }
+
+        ((int oldX, int oldY), (int newX, int newY)) move = ((-1, -1), (-1, -1));
+
+        Node<((int x, int y), (int x, int y))>? currentNode = childGames.Head;
+        while (currentNode != null)
+        {
+            if (!IsCapture(game, currentNode.Data.Item2))
+            {
+                currentNode = currentNode.NextNode;
+                continue;
+            }
+
+            // Delta pruning
+            const double safetyMargin = 200;
+            if (standPat + GetPieceMaterialValue(game, currentNode.Data.Item2) + safetyMargin < alpha)
+            {
+                currentNode = currentNode.NextNode;
+                continue;
+            }
+            
+            // Deep copy
+            Game childGame = game.Copy();
+            childGame.MovePiece(currentNode.Data.Item1, currentNode.Data.Item2);
+            value = -QuiescenceSearch(childGame, -colour, -beta, -alpha).Item1;
+            if (value > alpha)
+            {
+                alpha = value;
+                move = currentNode.Data;
+            }
+            if (alpha >= beta) return (beta, move);
+            currentNode = currentNode.NextNode;
+        }
+
+        return (alpha, move);
+    }
+    
+    private static double GetPieceMaterialValue(Game game, (int x, int y) newPos)
+    {
+        return game.Board[newPos.x, newPos.y][1] switch
+        {
+            'P' => 100,
+            'N' => 320,
+            'B' => 330,
+            'R' => 500,
+            'Q' => 900,
+            'K' => 0,
+            _ => throw new ArgumentException("Invalid piece")
+        };
+    }
+    
+    // TODO: Implement capture heuristics, killer move and history heuristics
     // https://www.duo.uio.no/bitstream/handle/10852/53769/master.pdf?sequence=1
     private static (double, ((int oldX, int oldY), (int newX, int newY))) Negamax(Game game, int depth, int colour,
-        double alpha, double beta, DateTime startTime, int maxTimeMs, double? windowCentre = null)
+        double alpha, double beta, DateTime startTime, double? windowCentre = null)
     {
-        
-        // TODO: fix stuff
         int[] hash = game.GetHash();
         if (TranspositionTable.TryGetValue(hash, out (double, int) entry) && entry.Item2 >= depth)
         {
@@ -223,9 +295,24 @@ public class Bot
         }
         
         // Is terminal
-        if (depth == 0 || game.IsFinished || (DateTime.Now - startTime).TotalMilliseconds > maxTimeMs)
+        if (depth == 0 || (DateTime.Now - startTime).TotalMilliseconds > MaxNegamaxTimeMs)
         {
-            return (colour * Evaluate(game), ((-1, -1), (-1, -1)));
+            return QuiescenceSearch(game, colour, alpha, beta);
+        }
+        if (game.IsFinished)
+        {
+            return (game.Score, ((-1, -1), (-1, -1)));
+        }        
+        // Null move pruning TODO: Zugzwangs in pawn endgames
+        if (!game.IsKingInCheck())
+        {
+            Game nullMoveGame = game.Copy();
+            nullMoveGame.MakeNullMove();
+            double nullMoveValue = -Negamax(nullMoveGame, depth - 1, -colour, -beta, -beta + 1, startTime).Item1;
+            if (nullMoveValue >= beta && depth >= 3)
+            {
+                return (nullMoveValue, ((-1, -1), (-1, -1)));
+            }
         }
 
         double value = double.NegativeInfinity;
@@ -236,6 +323,8 @@ public class Bot
         Node<((int x, int y), (int x, int y))>? currentNode = childGames.Head;
         while (currentNode != null)
         {
+            int extension = game.Board[currentNode.Data.Item2.x, currentNode.Data.Item2.y] != "" ? 1 : 0;
+            
             // Deep copy
             Game childGame = game.Copy();
             childGame.MovePiece(currentNode.Data.Item1, currentNode.Data.Item2);
@@ -244,11 +333,12 @@ public class Bot
             double windowAlpha = windowCentre.HasValue ? windowCentre.Value - aspirationWindow : alpha;
             double windowBeta = windowCentre.HasValue ? windowCentre.Value + aspirationWindow : beta;
             
-            double value2 = -Negamax(childGame, depth - 1, -colour, -windowBeta, -windowAlpha, startTime, maxTimeMs).Item1;
+            double value2 = -Negamax(childGame, depth - 1 + extension, -colour, -windowBeta, -windowAlpha, startTime)
+                .Item1;
             
             if (value2 <= windowAlpha || value2 >= beta)
             {
-                value2 = -Negamax(childGame, depth - 1, -colour, -beta, -alpha, startTime, maxTimeMs).Item1;
+                value2 = -Negamax(childGame, depth - 1 + extension, -colour, -beta, -alpha, startTime).Item1;
             }
             
             if (value2 > value)
@@ -299,7 +389,7 @@ public class Bot
     private static int GetPieceSquareValue(string piece, int x, int y)
     {
         // Equivalent to flipping the board for black pieces
-        if (piece[0] == 'b')
+        if (piece[0] == 'w')
         {
             x = 7 - x;
             y = 7 - y;
