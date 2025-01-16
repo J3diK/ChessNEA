@@ -190,7 +190,7 @@ public class Game
         return !((piece[0] == 'w') ^ _isWhiteTurn);
     }
 
-    public bool IsKingInCheck((int x, int y)? newPosition = null, (int x, int y)? oldPosition = null)
+    private bool IsKingInCheck((int x, int y)? newPosition = null, (int x, int y)? oldPosition = null)
     {
         (int x, int y) kingPosition = _isWhiteTurn ? _whiteKingPosition : _blackKingPosition;
         bool isMoving = newPosition is not null && oldPosition is not null;

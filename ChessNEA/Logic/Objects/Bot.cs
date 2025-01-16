@@ -186,6 +186,8 @@ public class Bot
     {
         // Deep copy
         Game localGame = game.Copy();
+        double value = Evaluate(game);
+        ((int oldX, int oldY), (int newX, int newY)) bestMove;
 
         // Iterative deepening search
         for (int depth = 1; ; depth++)
@@ -195,9 +197,9 @@ public class Bot
                 Console.WriteLine(depth); // TODO: Remove, used for debugging
                 break;
             }
-
-            ((int oldX, int oldY), (int newX, int newY)) bestMove =
-                Negamax(localGame, depth, colour, Alpha, Beta).Item2;
+            
+            if (depth == 1) (value, bestMove) = Negamax(localGame, depth, colour, Alpha, Beta, startTime, maxTimeMs);
+            else (value, bestMove) = Negamax(localGame, depth, colour, Alpha, Beta, startTime, maxTimeMs, value);
 
             // Update the vote count for the move
             if (bestMove != ((-1, -1), (-1, -1)))
@@ -210,8 +212,10 @@ public class Bot
     // TODO: Implement aspiration window, capture heuristics, killer move and history heuristics, quiescence search, search extensions, and null move pruning?
     // https://www.duo.uio.no/bitstream/handle/10852/53769/master.pdf?sequence=1
     private static (double, ((int oldX, int oldY), (int newX, int newY))) Negamax(Game game, int depth, int colour,
-        double alpha, double beta)
+        double alpha, double beta, DateTime startTime, int maxTimeMs, double? windowCentre = null)
     {
+        
+        // TODO: fix stuff
         int[] hash = game.GetHash();
         if (TranspositionTable.TryGetValue(hash, out (double, int) entry) && entry.Item2 >= depth)
         {
@@ -219,13 +223,14 @@ public class Bot
         }
         
         // Is terminal
-        if (depth == 0 || game.IsFinished)
+        if (depth == 0 || game.IsFinished || (DateTime.Now - startTime).TotalMilliseconds > maxTimeMs)
         {
             return (colour * Evaluate(game), ((-1, -1), (-1, -1)));
         }
 
         double value = double.NegativeInfinity;
         LinkedList.LinkedList<((int x, int y), (int x, int y))> childGames = GetChildGames(game, colour);
+        
         ((int oldX, int oldY), (int newX, int newY)) move = ((-1, -1), (-1, -1));
 
         Node<((int x, int y), (int x, int y))>? currentNode = childGames.Head;
@@ -234,7 +239,18 @@ public class Bot
             // Deep copy
             Game childGame = game.Copy();
             childGame.MovePiece(currentNode.Data.Item1, currentNode.Data.Item2);
-            double value2 = -Negamax(childGame, depth - 1, -colour, -beta, -alpha).Item1;
+            
+            const double aspirationWindow = 250;
+            double windowAlpha = windowCentre.HasValue ? windowCentre.Value - aspirationWindow : alpha;
+            double windowBeta = windowCentre.HasValue ? windowCentre.Value + aspirationWindow : beta;
+            
+            double value2 = -Negamax(childGame, depth - 1, -colour, -windowBeta, -windowAlpha, startTime, maxTimeMs).Item1;
+            
+            if (value2 <= windowAlpha || value2 >= beta)
+            {
+                value2 = -Negamax(childGame, depth - 1, -colour, -beta, -alpha, startTime, maxTimeMs).Item1;
+            }
+            
             if (value2 > value)
             {
                 value = value2;
