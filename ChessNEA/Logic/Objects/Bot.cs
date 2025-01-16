@@ -185,7 +185,7 @@ public class Bot
     {
         // Deep copy
         Game localGame = game.Copy();
-        double value = Evaluate(game);
+        double value = 0;
 
         // Iterative deepening search
         for (int depth = 1; depth < 100; depth++)

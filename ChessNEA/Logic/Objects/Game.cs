@@ -322,8 +322,8 @@ public class Game
 
             if (IsTakingEnPassant(oldPosition, newPosition)) Board[oldPosition.x, newPosition.y] = "";
 
-            if (ReachedOppositeEnd(newPosition))
-                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..1] + 'Q' + '1';
+            if (ReachedOppositeEnd(newPosition)) // TODO: Allow user to choose piece
+                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..1] + 'Q';
         }
 
         switch (Board[oldPosition.x, oldPosition.y][1])
