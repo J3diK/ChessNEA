@@ -12,10 +12,7 @@ namespace ChessNEA;
 public partial class MainWindow : Window
 {
     private static bool _isPlayerWhite = true;
-    private readonly Bot _bot = new()
-    {
-        IsWhite = false
-    };
+    private Bot _bot = new();
     private Game _game = new(_isPlayerWhite);
     private (int x, int y) _selectedPiece;
     private bool _isWhiteOnBottom = true;
@@ -36,6 +33,7 @@ public partial class MainWindow : Window
             {
                 int x = _isWhiteOnBottom ? i : 7 - i;
                 int y = _isWhiteOnBottom ? j : 7 - j;
+                
                 Button button = new()
                 {
                     Content = GetSymbol(_game.Board[x, y]),
@@ -79,6 +77,11 @@ public partial class MainWindow : Window
             BlockInput.IsVisible = true;
         });
         
+        MovePieceBot();
+    }
+
+    private async void MovePieceBot()
+    {
         ((int oldX, int oldY), (int newX, int newY)) move = await _bot.GetMove(_game);
         _selectedPiece = move.Item1;
         MovePiece(move.Item2);
@@ -95,6 +98,11 @@ public partial class MainWindow : Window
         InitializeBoard();
 
         if (!_game.IsFinished) return;
+        DisplayGameEnd();
+    }
+    
+    private void DisplayGameEnd()
+    {
         string message = _game.Score switch
         {
             0 => "Draw!",
@@ -109,7 +117,6 @@ public partial class MainWindow : Window
         ResignOrNewGameButton.Click -= ClickButtonResign;
         ResignOrNewGameButton.Click += ClickButtonNewGame;
     }
-
     private void ClickButtonNewGame(object? sender, RoutedEventArgs e)
     {
         NewGameConfirmation newGameConfirmation = new();
@@ -129,7 +136,11 @@ public partial class MainWindow : Window
     
     private void SetupNewGame()
     {
-        _game = new Game(_isPlayerWhite);
+        _bot = new Bot
+        {
+            IsWhite = !_isPlayerWhite
+        };
+        _game = new Game();
         _selectedPiece = (0, 0);
         _isWhiteOnBottom = _isPlayerWhite;
         InitializeBoard();
@@ -137,11 +148,17 @@ public partial class MainWindow : Window
         ResignOrNewGameButton.Content = "Resign";
         ResignOrNewGameButton.Click -= ClickButtonNewGame;
         ResignOrNewGameButton.Click += ClickButtonResign;
+        
+        if (!_isPlayerWhite)
+        {
+            MovePieceBot();
+        }
     }
     
-    private static void ClickButtonResign(object? sender, RoutedEventArgs e)
+    private void ClickButtonResign(object? sender, RoutedEventArgs e)
     {
-        throw new NotImplementedException();
+        _game.Score = _isPlayerWhite ? double.NegativeInfinity : double.PositiveInfinity;
+        DisplayGameEnd();
     }
 
     

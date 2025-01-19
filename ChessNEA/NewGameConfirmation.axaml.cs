@@ -13,11 +13,12 @@ public partial class NewGameConfirmation : Window
     public NewGameConfirmation()
     {
         InitializeComponent();
+        IsWhite.IsChecked = false;
     }
 
     private void ClickButtonNewGame(object? sender, RoutedEventArgs e)
     {
-        bool isWhite = !IsWhite.IsEnabled;
+        bool isWhite = (bool)(!IsWhite.IsChecked)!;
         NewGameConfirmed?.Invoke(isWhite);
         Close();
     }

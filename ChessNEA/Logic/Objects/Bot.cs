@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Input;
 using ChessNEA.Logic.Objects.LinkedList;
 
 namespace ChessNEA.Logic.Objects;
@@ -70,6 +71,56 @@ public class Bot
         {  20, 20,  0,  0,  0,  0, 20, 20 },
         {  20, 30, 10,  0,  0, 10, 30, 20 }
     };
+
+    // Graph representing openings with at least 100k games played by masters, according to Lichess as of 2025-01-19.
+    private static readonly Dictionary<string, List<string>> OpeningsBook = new()
+    {
+        // 1. White
+        { "e2e4", ["e2e4 c7c5", "e2e4 e7e5", "e2e4 e7e6"] }, // King's Pawn Opening
+        { "d2d4", ["d2d4 g8f6", "d2d4 d7d5"] }, // Queen's Pawn Opening
+        { "g1f3", ["g1f3 g8f6"] }, // Réti Opening
+        { "c2c4", [] }, // English Opening
+        // 1. Black
+        { "e2e4 c7c5", ["e2e4 c7c5 g1f3"] }, // Sicilian Defense
+        { "e2e4 e7e5", ["e2e4 e7e5 g1f3"] }, // King's Pawn Opening
+        { "e2e4 e7e6", ["e2e4 e7e6 d2d4"] }, // French Defense
+        { "d2d4 g8f6", ["d2d4 g8f6 c2c4", "d2d4 g8f6 g1f3"] }, // Indian Game
+        { "d2d4 d7d5", ["d2d4 d7d5 c2c4"] }, // Queen's Pawn Opening
+        { "g1f3 g8f6", []}, // Réti Opening
+        // 2. White
+        { "e2e4 c7c5 g1f3", ["e2e4 c7c5 g1f3 d7d6", "e2e4 c7c5 g1f3 b8c6", "e2e4 c7c5 g1f3 e7e6"]}, // Sicilian Defense
+        { "e2e4 e7e5 g1f3", ["e2e4 e7e5 g1f3 b8c6"]}, // King's Pawn Opening: King's Knight Variation
+        { "e2e4 e7e6 d2d4", ["e2e4 e7e6 d2d4 d7d5"]}, // French Defense: Normal Variation
+        { "d2d4 g8f6 c2c4", ["d2d4 g8f6 c2c4 e7e6", "d2d4 g8f6 c2c4 g7g6"]}, // Indian Game
+        { "d2d4 g8f6 g1f3", []}, // Indian Game: Knights Variation
+        { "d2d4 d7d5 c2c4", []}, // Queen's Gambit
+        // 2. Black
+        { "e2e4 c7c5 g1f3 d7d6", ["e2e4 c7c5 g1f3 d7d6 d2d4"]}, // Sicilian Defense
+        { "e2e4 c7c5 g1f3 b8c6", []}, // Sicilian Defense: Old Sicilian Variation
+        { "e2e4 c7c5 g1f3 e7e6", []}, // Sicilian Defense: French Variation
+        { "e2e4 e7e5 g1f3 b8c6", ["e2e4 e7e5 g1f3 b8c6 f1b5"]}, // King's Pawn Opening: King's Knight Variation
+        { "e2e4 e7e6 d2d4 d7d5", []}, // 
+        { "d2d4 g8f6 c2c4 e7e6", ["d2d4 g8f6 c2c4 e7e6 g1f3"]}, // Indian Game: East Indian, Anti-Nimzo-Indian Variation
+        { "d2d4 g8f6 c2c4 g7g6", ["d2d4 g8f6 c2c4 g7g6 b1c3"]}, // King's Indian Defense
+        // 3. White
+        { "e2e4 c7c5 g1f3 d7d6 d2d4", ["e2e4 c7c5 g1f3 d7d6 d2d4 c5d4"]}, // Sicilian Defense
+        { "e2e4 e7e5 g1f3 b8c6 f1b5", ["e2e4 e7e5 g1f3 b8c6 f1b5 a7a6"]}, // King's Pawn Opening: King's Knight Variation
+        { "d2d4 g8f6 c2c4 e7e6 g1f3", []}, // Indian Game
+        { "d2d4 g8f6 c2c4 g7g6 b1c3", []}, // King's Indian Defense
+        // 3. Black
+        { "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4", ["e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4"]}, // Sicilian Defense
+        { "e2e4 e7e5 g1f3 b8c6 f1b5 a7a6", []}, // King's Pawn Opening: King's Knight Variation: Normal Variation
+        // 4. White // Sicilian Defense: Open Variation
+        { "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4", ["e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6"]}, 
+        // 4. Black // Sicilian Defense: Open Variation
+        { "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6", ["e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3"]}, 
+        // 5. White // Sicilian Defense: Open Variation
+        { "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3", ["e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6"]}, 
+        // 5. Black // Sicilian Defense: Open Variation: Najdorf Variation
+        { "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6", []}, 
+    };
+    private static string _openingMoves = "";
+    private static bool _inOpeningBook = true;
     
     private static readonly ConcurrentDictionary<((int oldX, int oldY), (int newX, int newY)), int> MoveVoteCount =
         new();
@@ -142,7 +193,39 @@ public class Bot
     /// <returns>The move that the bot determines to be the best</returns>
     public Task<((int oldX, int oldY), (int newX, int newY))> GetMove(Game game)
     {
-        return FindBestMove(game, IsWhite ? 1 : -1, Environment.ProcessorCount);
+        if (!_inOpeningBook || !OpeningsBook.ContainsKey((_openingMoves + " " + EncodeMove(game.LastMove)).Trim()))
+        {
+            _inOpeningBook = false;
+            return FindBestMove(game, IsWhite ? 1 : -1, Environment.ProcessorCount);
+        }
+            
+        
+        _openingMoves = (_openingMoves + " " + EncodeMove(game.LastMove)).Trim();
+        List<string> nextMoves = OpeningsBook[_openingMoves];
+        
+        if (nextMoves.Count == 0)
+        {
+            _inOpeningBook = false;
+            return FindBestMove(game, IsWhite ? 1 : -1, Environment.ProcessorCount);
+        }
+        
+        _openingMoves = nextMoves[new Random().Next(nextMoves.Count)];
+        
+        return Task.FromResult(DecodeMove(_openingMoves.Substring(_openingMoves.Length - 4)));
+    }
+    
+    private static string EncodeMove(((int oldX, int oldY), (int newX, int newY)) move)
+    {
+        // +97 converts 1 to A, 2 to B, etc.
+        return
+            $"{(char)(move.Item1.oldY + 97)}{move.Item1.oldX + 1}{(char)(move.Item2.newY + 97)}{move.Item2.newX + 1}";
+    }
+    
+    private static ((int oldX, int oldY), (int newX, int newY)) DecodeMove(string move)
+    {
+        // -97 converts A to 1, B to 2, etc.
+        // -48 converts a string number to an int (0 is 48 in Unicode), -49 to convert to 0-indexed
+        return ((move[1] - 49, move[0] - 97), (move[3] - 49, move[2] - 97));
     }
 
     // https://www.chessprogramming.org/Iterative_Deepening
@@ -155,7 +238,7 @@ public class Bot
     /// <param name="colour">1 if white, -1 if black</param>
     /// <param name="maxThreads">How many threads should be used</param>
     /// <returns>The move that the bot determines to be the best</returns>
-    private static Task<((int oldX, int oldY), (int newX, int newY))> FindBestMove(Game game, int colour, int maxThreads)
+    private Task<((int oldX, int oldY), (int newX, int newY))> FindBestMove(Game game, int colour, int maxThreads)
     {
         DateTime startTime = DateTime.Now;
         List<Task> tasks = [];

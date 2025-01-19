@@ -57,13 +57,13 @@ public class Game
 
     private readonly Dictionary<int[], int> _boardStates;
 
-    public Game(bool isWhiteTurn, string[,]? board = null)
+    public Game(bool? isWhiteTurn = null, string[,]? board = null)
     {
         if (board is not null)
         {
             Board = board;
         }
-        _isWhiteTurn = isWhiteTurn;
+        _isWhiteTurn = isWhiteTurn is null || isWhiteTurn.Value;
         _boardStates = new Dictionary<int[], int>(new IntArrayComparer())
         {
             { EncodeBoard(Board), 1 }
