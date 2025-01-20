@@ -16,11 +16,23 @@ public partial class MainWindow : Window
     private Game _game = new(_isPlayerWhite);
     private (int x, int y) _selectedPiece;
     private bool _isWhiteOnBottom = true;
+    private readonly SolidColorBrush _background = new SolidColorBrush(Color.FromArgb(50, 0, 0, 0));
 
     public MainWindow()
     {
         InitializeComponent();
         SetupNewGame();
+        FirstOpen();
+    }
+    
+    private void FirstOpen()
+    {
+        WinnerText.Content = "";
+        WinnerText.Background = new SolidColorBrush(_background.Color);
+        WinnerText.IsVisible = true;
+        ResignOrNewGameButton.Content = "New Game";
+        ResignOrNewGameButton.Click -= ClickButtonResign;
+        ResignOrNewGameButton.Click += ClickButtonNewGame;
     }
 
     private void InitializeBoard(LinkedList<(int, int)>? moves = null)
@@ -111,7 +123,7 @@ public partial class MainWindow : Window
             _ => ""
         };
         WinnerText.Content = message;
-        WinnerText.Background = new SolidColorBrush(Color.FromArgb(50, 0, 0, 0));
+        WinnerText.Background = new SolidColorBrush(_background.Color);
         WinnerText.IsVisible = true;
         ResignOrNewGameButton.Content = "New Game";
         ResignOrNewGameButton.Click -= ClickButtonResign;

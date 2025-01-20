@@ -7,7 +7,7 @@ public class LinkedList<T>
 {
     public Node<T>? Head { get; private set; }
     private Node<T>? Tail { get; set; }
-    private int _count;
+    public int Count { get; private set; }
 
     public void AddNode(T data)
     {
@@ -28,7 +28,52 @@ public class LinkedList<T>
             Tail = Tail.NextNode;
         }
 
-        _count++;
+        Count++;
+    }
+    
+    public (LinkedList<T>, LinkedList<T>) SplitList(int index)
+    {
+        LinkedList<T> left = new();
+        LinkedList<T> right = new();
+        
+        Node<T>? node = Head;
+        for (int i = 0; i < index; i++)
+        {
+            if (node is null)
+            {
+                throw new IndexOutOfRangeException();
+            }
+            left.AddNode(node.Data!);
+            node = node.NextNode;
+        }
+        
+        while (node is not null)
+        {
+            right.AddNode(node.Data!);
+            node = node.NextNode;
+        }
+
+        return (left, right);
+    }
+    
+    public Node<T> GetNode(int index)
+    {
+        Node<T>? node = Head;
+        for (int i = 0; i < index; i++)
+        {
+            if (node is null)
+            {
+                throw new IndexOutOfRangeException();
+            }
+            node = node.NextNode;
+        }
+        
+        if (node is null)
+        {
+            throw new IndexOutOfRangeException();
+        }
+
+        return node;
     }
     
     public void RemoveNode(T data)
@@ -44,7 +89,7 @@ public class LinkedList<T>
         {
             Head = node.NextNode;
             if (Head != null) Head.PreviousNode = null;
-            _count--;
+            Count--;
             return;
         }
         
@@ -57,7 +102,7 @@ public class LinkedList<T>
                 node.PreviousNode!.NextNode = node.NextNode;
                 if (node.NextNode == null) continue;
                 node.NextNode.PreviousNode = node.PreviousNode;
-                _count--;
+                Count--;
                 return;
             }
             catch (Exception e)

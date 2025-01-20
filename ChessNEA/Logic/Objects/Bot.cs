@@ -134,57 +134,67 @@ public class Bot
 
     private const int MaxNegamaxTimeMs = 30_000;
 
-    // private static List<((int x, int y), (int x, int y))> MergeSort(Game game, List<((int x, int y), (int x, int y))> games)
-    // {
-    //     if (games.Count <= 1)
-    //     {
-    //         return games;
-    //     }
-    //     
-    //     List<((int x, int y), (int x, int y))> left = games.GetRange(0, games.Count / 2);
-    //     List<((int x, int y), (int x, int y))> right = games.GetRange(games.Count / 2, games.Count - games.Count / 2);
-    //     
-    //     Task<List<((int x, int y), (int x, int y))>> leftTask = Task.Run(() => MergeSort(game, left));
-    //     Task<List<((int x, int y), (int x, int y))>> rightTask = Task.Run(() => MergeSort(game, right));
-    //     Task.WaitAll(leftTask, rightTask);
-    //     
-    //     return Merge(game, leftTask.Result, rightTask.Result);
-    // }
+    private static LinkedList.LinkedList<((int x, int y), (int x, int y))> MergeSort(Game game,
+        LinkedList.LinkedList<((int x, int y), (int x, int y))> games)
+    {
+        if (games.Count <= 1)
+        {
+            return games;
+        }
 
-    // private static List<((int x, int y), (int x, int y))> Merge(Game game, List<((int x, int y), (int x, int y))> left, List<((int x, int y), (int x, int y))> right)
-    // {
-    //     List<((int x, int y), (int x, int y))> merged = [];
-    //     int leftIndex = 0;
-    //     int rightIndex = 0;
-    //     
-    //     while (leftIndex < left.Count && rightIndex < right.Count)
-    //     {
-    //         if (Evaluate(game, left[leftIndex]) > Evaluate(game, right[rightIndex]))
-    //         {
-    //             merged.Add(left[leftIndex]);
-    //             leftIndex++;
-    //         }
-    //         else
-    //         {
-    //             merged.Add(right[rightIndex]);
-    //             rightIndex++;
-    //         }
-    //     }
-    //     
-    //     while (leftIndex < left.Count)
-    //     {
-    //         merged.Add(left[leftIndex]);
-    //         leftIndex++;
-    //     }
-    //     
-    //     while (rightIndex < right.Count)
-    //     {
-    //         merged.Add(right[rightIndex]);
-    //         rightIndex++;
-    //     }
-    //     
-    //     return merged;
-    // }
+        (LinkedList.LinkedList<((int x, int y), (int x, int y))> left,
+            LinkedList.LinkedList<((int x, int y), (int x, int y))> right) = games.SplitList(games.Count / 2);
+        
+        Task<LinkedList.LinkedList<((int x, int y), (int x, int y))>> leftTask = Task.Run(() => MergeSort(game, left));
+        Task<LinkedList.LinkedList<((int x, int y), (int x, int y))>> rightTask = Task.Run(() => MergeSort(game, right));
+        Task.WaitAll(leftTask, rightTask);
+        
+        return Merge(game, leftTask.Result, rightTask.Result);
+    }
+
+    private static LinkedList.LinkedList<((int x, int y), (int x, int y))> Merge(Game game,
+        LinkedList.LinkedList<((int x, int y), (int x, int y))> left,
+        LinkedList.LinkedList<((int x, int y), (int x, int y))> right)
+    {
+        LinkedList.LinkedList<((int x, int y), (int x, int y))> merged = new();
+        int leftIndex = 0;
+        int rightIndex = 0;
+        
+        Node<((int x, int y), (int x, int y))> leftNode = left.GetNode(0);
+        Node<((int x, int y), (int x, int y))> rightNode = right.GetNode(0);
+        
+        while (leftIndex < left.Count && rightIndex < right.Count)
+        {
+            if (Evaluate(game, leftNode.Data) > Evaluate(game, rightNode.Data))
+            {
+                merged.AddNode(leftNode.Data);
+                leftIndex++;
+                leftNode = leftNode.NextNode!;
+            }
+            else
+            {
+                merged.AddNode(rightNode.Data);
+                rightIndex++;
+                rightNode = rightNode.NextNode!;
+            }
+        }
+        
+        while (leftIndex < left.Count)
+        {
+            merged.AddNode(leftNode.Data);
+            leftIndex++;
+            leftNode = leftNode.NextNode!;
+        }
+        
+        while (rightIndex < right.Count)
+        {
+            merged.AddNode(rightNode.Data);
+            rightIndex++;
+            rightNode = rightNode.NextNode!;
+        }
+        
+        return merged;
+    }
     
     /// <summary>
     /// Returns the move that the bot determines to be the best
@@ -400,6 +410,7 @@ public class Bot
 
         double value = double.NegativeInfinity;
         LinkedList.LinkedList<((int x, int y), (int x, int y))> childGames = GetChildGames(game, colour);
+        childGames = MergeSort(game, childGames);
         
         ((int oldX, int oldY), (int newX, int newY)) move = ((-1, -1), (-1, -1));
 
@@ -467,6 +478,14 @@ public class Bot
         }
 
         return score;
+    }
+    
+    private static double Evaluate(Game game, ((int oldX, int oldY), (int newX, int newY)) move)
+    {
+        // Deep copy
+        Game childGame = game.Copy();
+        childGame.MovePiece(move.Item1, move.Item2);
+        return Evaluate(childGame);
     }
     
     private static int GetPieceSquareValue(string piece, int x, int y)
