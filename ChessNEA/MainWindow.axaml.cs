@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -81,7 +82,33 @@ public partial class MainWindow : Window
     
     private async void MovePiecePlayer((int x, int y) position)
     {
-        MovePiece(position);
+        if (_game.IsPromotingMove(_selectedPiece, position))
+        {
+            TaskCompletionSource<char> tcs = new();
+            PromotionOptions promotionOptions = new();
+            promotionOptions.PromotionSelected += selectedPiece =>
+            {
+                char piece = selectedPiece[0] switch
+                {
+                    'Q' => 'Q',
+                    'R' => 'R',
+                    'B' => 'B',
+                    'K' => 'N',
+                    _ => throw new ArgumentException("Unknown piece")
+                };
+                tcs.SetResult(piece);
+                promotionOptions.Close();
+            };
+            promotionOptions.Show();
+
+            char promotionPiece = await tcs.Task;
+            MovePiece(position, promotionPiece);
+        }
+        else
+        {
+            MovePiece(position);
+        }
+        
         if (_game.IsFinished) return;
 
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -94,9 +121,9 @@ public partial class MainWindow : Window
 
     private async void MovePieceBot()
     {
-        ((int oldX, int oldY), (int newX, int newY)) move = await _bot.GetMove(_game);
-        _selectedPiece = move.Item1;
-        MovePiece(move.Item2);
+        ((int oldX, int oldY) moveOld, (int newX, int newY) moveNew, char? promotionPiece) = await _bot.GetMove(_game);
+        _selectedPiece = moveOld;
+        MovePiece(moveNew, promotionPiece);
         
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -104,14 +131,22 @@ public partial class MainWindow : Window
         });
     }
 
-    private void MovePiece((int x, int y) position)
+    private void MovePiece((int x, int y) position, char? promotionPiece = null)
     {
-        _game.MovePiece(_selectedPiece, position);
+        if (promotionPiece is not null)
+        {
+            _game.MovePiece(_selectedPiece, position, promotionPiece);
+        }
+        else
+        {
+            _game.MovePiece(_selectedPiece, position);
+        }
         InitializeBoard();
 
         if (!_game.IsFinished) return;
         DisplayGameEnd();
     }
+    
     
     private void DisplayGameEnd()
     {
@@ -148,10 +183,8 @@ public partial class MainWindow : Window
     
     private void SetupNewGame()
     {
-        _bot = new Bot
-        {
-            IsWhite = !_isPlayerWhite
-        };
+        
+        _bot = new Bot(!_isPlayerWhite);
         _game = new Game();
         _selectedPiece = (0, 0);
         _isWhiteOnBottom = _isPlayerWhite;

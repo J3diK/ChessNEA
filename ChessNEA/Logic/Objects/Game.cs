@@ -34,7 +34,7 @@ public class Game
     ///     A 0 means that it cannot currently be taken, a 1 means it can, a 2 means it never can.
     ///     The 3rd character for rooks and kings is either 0 or 1 and denotes if the rook has moved or not.
     /// </summary>
-    public readonly string[,] Board =
+    public string[,] Board { get; } =
     {
         // A     B     C     D     E     F     G     H
         { "wR0", "wN", "wB", "wQ", "wK0", "wB", "wN", "wR0" }, // 1
@@ -49,11 +49,11 @@ public class Game
 
     private (int x, int y) _whiteKingPosition = (0, 4);
     private (int x, int y) _blackKingPosition = (7, 4);
-    public bool IsFinished;
-    public double Score;
-    private bool _isWhiteTurn;
+    public bool IsFinished { get; private set; }
+    public double Score { get; set; }
+    public bool IsWhiteTurn { get; set; }
     private int _movesSincePawnOrCapture;
-    public ((int oldX, int oldY), (int newX, int newY)) LastMove;
+    public ((int oldX, int oldY), (int newX, int newY)) LastMove { get; private set; }
 
     private readonly Dictionary<int[], int> _boardStates;
 
@@ -63,7 +63,7 @@ public class Game
         {
             Board = board;
         }
-        _isWhiteTurn = isWhiteTurn is null || isWhiteTurn.Value;
+        IsWhiteTurn = isWhiteTurn is null || isWhiteTurn.Value;
         _boardStates = new Dictionary<int[], int>(new IntArrayComparer())
         {
             { EncodeBoard(Board), 1 }
@@ -84,14 +84,8 @@ public class Game
     
     public void MakeNullMove()
     {
-        if (_isWhiteTurn) _movesSincePawnOrCapture++;
-        _isWhiteTurn = !_isWhiteTurn;
-    }
-    
-    public void UndoNullMove()
-    {
-        if (!_isWhiteTurn) _movesSincePawnOrCapture--;
-        _isWhiteTurn = !_isWhiteTurn;
+        if (IsWhiteTurn) _movesSincePawnOrCapture++;
+        IsWhiteTurn = !IsWhiteTurn;
     }
     
     public int[] GetHash()
@@ -119,8 +113,8 @@ public class Game
         Score = 0;
         IsFinished = true;
     }
-    
-    public static int[] EncodeBoard(string[,] board)
+
+    private static int[] EncodeBoard(string[,] board)
     {
         int[] boardState = new int[8];
 
@@ -162,7 +156,7 @@ public class Game
 
     public Game Copy()
     {
-        return new Game(_isWhiteTurn, Board.Clone() as string[,])
+        return new Game(IsWhiteTurn, Board.Clone() as string[,])
         {
             _whiteKingPosition = _whiteKingPosition,
             _blackKingPosition = _blackKingPosition,
@@ -187,12 +181,12 @@ public class Game
 
     private bool IsCurrentPlayerColour(string piece)
     {
-        return !((piece[0] == 'w') ^ _isWhiteTurn);
+        return !((piece[0] == 'w') ^ IsWhiteTurn);
     }
 
     public bool IsKingInCheck((int x, int y)? newPosition = null, (int x, int y)? oldPosition = null)
     {
-        (int x, int y) kingPosition = _isWhiteTurn ? _whiteKingPosition : _blackKingPosition;
+        (int x, int y) kingPosition = IsWhiteTurn ? _whiteKingPosition : _blackKingPosition;
         bool isMoving = newPosition is not null && oldPosition is not null;
         string oldPositionPiece = "";
         string newPositionPiece = "";
@@ -276,7 +270,7 @@ public class Game
 
     private void UpdateKingPosition((int x, int y) position)
     {
-        if (_isWhiteTurn)
+        if (IsWhiteTurn)
             _whiteKingPosition = position;
         else
             _blackKingPosition = position;
@@ -298,9 +292,14 @@ public class Game
                                                             && Board[oldPosition.x, newPosition.y][2] == '1';
     }
 
+    public bool IsPromotingMove((int x, int y) oldPosition, (int x, int y) newPosition)
+    {
+        return Board[oldPosition.x, oldPosition.y][1] == 'P' && ReachedOppositeEnd(newPosition);
+    }
+    
     private bool ReachedOppositeEnd((int x, int y) position)
     {
-        return (_isWhiteTurn && position.x == 7) || (!_isWhiteTurn && position.x == 0);
+        return (IsWhiteTurn && position.x == 7) || (!IsWhiteTurn && position.x == 0);
     }
 
     /// <summary>
@@ -308,7 +307,8 @@ public class Game
     /// </summary>
     /// <param name="oldPosition">The position the piece is currently at</param>
     /// <param name="newPosition">The position the piece is to move to</param>
-    public void MovePiece((int x, int y) oldPosition, (int x, int y) newPosition)
+    /// <param name="promotion"></param>
+    public void MovePiece((int x, int y) oldPosition, (int x, int y) newPosition, char? promotion = null)
     {
         LastMove = (oldPosition, newPosition);
         
@@ -322,8 +322,14 @@ public class Game
 
             if (IsTakingEnPassant(oldPosition, newPosition)) Board[oldPosition.x, newPosition.y] = "";
 
-            if (ReachedOppositeEnd(newPosition)) // TODO: Allow user to choose piece
-                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..1] + 'Q';
+            if (ReachedOppositeEnd(newPosition))
+            {
+                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..1] + promotion;
+                if (promotion == 'R')
+                {
+                    Board[oldPosition.x, oldPosition.y] += '1'; // Prevent castling with promoted rook
+                }
+            }
         }
 
         switch (Board[oldPosition.x, oldPosition.y][1])
@@ -357,18 +363,18 @@ public class Game
 
         Board[newPosition.x, newPosition.y] = Board[oldPosition.x, oldPosition.y];
         Board[oldPosition.x, oldPosition.y] = "";
-        _isWhiteTurn = !_isWhiteTurn;
+        IsWhiteTurn = !IsWhiteTurn;
 
         for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++)
             if (Board[i, j] != "" && Board[i, j][1] == 'P' && !(i == newPosition.x && j == newPosition.y))
                 Board[i, j] = ChangeEnPassant(Board[i, j]);
 
-        if (_isWhiteTurn) _movesSincePawnOrCapture++;
+        if (IsWhiteTurn) _movesSincePawnOrCapture++;
 
         if (IsCheckmate())
         {
-            Score = _isWhiteTurn ? double.NegativeInfinity : double.PositiveInfinity;
+            Score = IsWhiteTurn ? double.NegativeInfinity : double.PositiveInfinity;
             IsFinished = true;
         }
         else if (_movesSincePawnOrCapture == 50)
@@ -391,31 +397,16 @@ public class Game
 
         if (!IsCurrentPlayerColour(Board[position.x, position.y])) return null;
 
-        LinkedList.LinkedList<(int, int)>? moves;
-
-        switch (Board[position.x, position.y][1])
+        LinkedList.LinkedList<(int, int)>? moves = Board[position.x, position.y][1] switch
         {
-            case 'P':
-                moves = GetMovesPawn(position);
-                break;
-            case 'N':
-                moves = GetMovesKnight(position);
-                break;
-            case 'B':
-                moves = GetMovesBishop(position);
-                break;
-            case 'R':
-                moves = GetMovesRook(position);
-                break;
-            case 'Q':
-                moves = GetMovesQueen(position);
-                break;
-            case 'K':
-                moves = GetMovesKing(position);
-                break;
-            default:
-                throw new ArgumentException($"Unknown piece type at {position}.");
-        }
+            'P' => GetMovesPawn(position),
+            'N' => GetMovesKnight(position),
+            'B' => GetMovesBishop(position),
+            'R' => GetMovesRook(position),
+            'Q' => GetMovesQueen(position),
+            'K' => GetMovesKing(position),
+            _ => throw new ArgumentException($"Unknown piece type at {position}.")
+        };
 
         if (moves is null) return null;
 
@@ -427,7 +418,7 @@ public class Game
 
             node = node.NextNode;
         }
-
+        
         return moves.Head is null ? null : moves;
     }
 
@@ -440,7 +431,7 @@ public class Game
     private LinkedList.LinkedList<(int, int)>? GetMovesPawn((int x, int y) position, bool checkingCheck = false)
     {
         LinkedList.LinkedList<(int, int)> moves = new();
-        int multiplier = _isWhiteTurn ? 1 : -1;
+        int multiplier = IsWhiteTurn ? 1 : -1;
         int upperLimit = 1;
 
 
@@ -699,7 +690,7 @@ public class Game
     /// <returns>A list of possible moves</returns>
     private LinkedList.LinkedList<(int, int)>? GetMovesKing((int x, int y) position)
     {
-        (int, int) kingPosition = _isWhiteTurn ? _whiteKingPosition : _blackKingPosition;
+        (int, int) kingPosition = IsWhiteTurn ? _whiteKingPosition : _blackKingPosition;
         LinkedList.LinkedList<(int x, int y)> moves = new();
 
         for (int i = -1; i <= 1; i++)

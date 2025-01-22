@@ -3,13 +3,13 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Avalonia.Input;
+using Avalonia.Platform;
 using ChessNEA.Logic.Objects.LinkedList;
 
 namespace ChessNEA.Logic.Objects;
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
-public class Bot
+public class Bot(bool isWhite = false)
 {
     private static readonly int[,] PawnTable = {
         {  0,  0,  0,  0,  0,  0,  0,  0 },
@@ -72,6 +72,18 @@ public class Bot
         {  20, 30, 10,  0,  0, 10, 30, 20 }
     };
 
+    private static readonly int[,] KingEndgameTable =
+    {
+        { -50, -40, -30, -20, -20, -30, -40, -50 },
+        { -30, -20, -10, 0, 0, -10, -20, -30 },
+        { -30, -10, 20, 30, 30, 20, -10, -30 },
+        { -30, -10, 30, 40, 40, 30, -10, -30 },
+        { -30, -10, 30, 40, 40, 30, -10, -30 },
+        { -30, -10, 20, 30, 30, 20, -10, -30 },
+        { -30, -30, 0, 0, 0, 0, -30, -30 },
+        { -50, -30, -30, -30, -30, -30, -30, -50 }
+    };
+
     // Graph representing openings with at least 100k games played by masters, according to Lichess as of 2025-01-19.
     private static readonly Dictionary<string, List<string>> OpeningsBook = new()
     {
@@ -119,20 +131,21 @@ public class Bot
         // 5. Black // Sicilian Defense: Open Variation: Najdorf Variation
         { "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6", []}, 
     };
-    private static string _openingMoves = "";
-    private static bool _inOpeningBook = true;
+    private string _openingMoves = "";
+    private bool _inOpeningBook = true;
+    private bool _inEndgame = false;
     
-    private static readonly ConcurrentDictionary<((int oldX, int oldY), (int newX, int newY)), int> MoveVoteCount =
+    private readonly ConcurrentDictionary<((int oldX, int oldY), (int newX, int newY), char?), int> _moveVoteCount =
         new();
     // Avoid redundant calculations
-    private static readonly ConcurrentDictionary<int[], (double, int)> TranspositionTable = new();
+    private readonly ConcurrentDictionary<int[], (double, int)> _transpositionTable = new();
 
     private const double Alpha = double.MinValue;
     private const double Beta = double.MaxValue;
-    
-    public bool IsWhite;
 
     private const int MaxNegamaxTimeMs = 30_000;
+
+    public bool IsWhite { get; init; } = isWhite;
 
     private static LinkedList.LinkedList<((int x, int y), (int x, int y))> MergeSort(Game game,
         LinkedList.LinkedList<((int x, int y), (int x, int y))> games)
@@ -201,7 +214,7 @@ public class Bot
     /// </summary>
     /// <param name="game">The game at the position where the bot is to make the move</param>
     /// <returns>The move that the bot determines to be the best</returns>
-    public Task<((int oldX, int oldY), (int newX, int newY))> GetMove(Game game)
+    public Task<((int oldX, int oldY), (int newX, int newY), char? promotionPiece)> GetMove(Game game)
     {
         if (!_inOpeningBook || !OpeningsBook.ContainsKey((_openingMoves + " " + EncodeMove(game.LastMove)).Trim()))
         {
@@ -220,8 +233,10 @@ public class Bot
         }
         
         _openingMoves = nextMoves[new Random().Next(nextMoves.Count)];
-        
-        return Task.FromResult(DecodeMove(_openingMoves.Substring(_openingMoves.Length - 4)));
+
+        ((int oldX, int oldY), (int newX, int newY)) move =
+            DecodeMove(_openingMoves[^4..]);
+        return Task.FromResult((move.Item1, move.Item2, (char?)null));
     }
     
     private static string EncodeMove(((int oldX, int oldY), (int newX, int newY)) move)
@@ -248,7 +263,8 @@ public class Bot
     /// <param name="colour">1 if white, -1 if black</param>
     /// <param name="maxThreads">How many threads should be used</param>
     /// <returns>The move that the bot determines to be the best</returns>
-    private Task<((int oldX, int oldY), (int newX, int newY))> FindBestMove(Game game, int colour, int maxThreads)
+    private Task<((int oldX, int oldY), (int newX, int newY), char? PromotionPiece)> FindBestMove(Game game, int colour, 
+        int maxThreads)
     {
         DateTime startTime = DateTime.Now;
         List<Task> tasks = [];
@@ -260,12 +276,13 @@ public class Bot
 
         Task.WaitAll(tasks.ToArray());
 
+        ((int oldX, int oldY), (int newX, int newY)) bestMove;
         // Sort by score in descending order and get the best move (first item).
-        ((int oldX, int oldY), (int newX, int newY)) bestMove =
-            MoveVoteCount.OrderByDescending(kvp => kvp.Value).FirstOrDefault().Key;
-        MoveVoteCount.Clear();
+        (bestMove.Item1, bestMove.Item2, char? promotionPiece) =
+            _moveVoteCount.OrderByDescending(kvp => kvp.Value).FirstOrDefault().Key;
+        _moveVoteCount.Clear();
         
-        return Task.FromResult(bestMove);
+        return Task.FromResult((bestMove.Item1, bestMove.Item2, promotionPiece));
     }
     
     /// <summary>
@@ -274,7 +291,7 @@ public class Bot
     /// <param name="game"></param>
     /// <param name="colour"></param>
     /// <param name="startTime"></param>
-    private static void SearchWorker(Game game, int colour, DateTime startTime)
+    private void SearchWorker(Game game, int colour, DateTime startTime)
     {
         // Deep copy
         Game localGame = game.Copy();
@@ -283,19 +300,20 @@ public class Bot
         // Iterative deepening search
         for (int depth = 1; depth < 100; depth++)
         {
+            char? piece;
             if ((DateTime.Now - startTime).TotalMilliseconds > MaxNegamaxTimeMs) // TODO: add future times if needed
             {
                 break;
             }
 
             ((int oldX, int oldY), (int newX, int newY)) bestMove;
-            if (depth == 1) (value, bestMove) = Negamax(localGame, depth, colour, Alpha, Beta, startTime);
-            else (value, bestMove) = Negamax(localGame, depth, colour, Alpha, Beta, startTime, value);
+            if (depth == 1) (value, bestMove, piece) = Negamax(localGame, depth, colour, Alpha, Beta, startTime);
+            else (value, bestMove, piece) = Negamax(localGame, depth, colour, Alpha, Beta, startTime, value);
 
             // Update the vote count for the move
             if (bestMove != ((-1, -1), (-1, -1)))
             {
-                MoveVoteCount.AddOrUpdate(bestMove, 1, (_, count) => count + 1);
+                _moveVoteCount.AddOrUpdate((bestMove.Item1, bestMove.Item2, piece), 1, (_, count) => count + 1);
             }
         }
     }
@@ -304,40 +322,104 @@ public class Bot
     {
         return game.Board[newPos.newX, newPos.newY] != "";
     }
+    
+    private static bool IsQuiet(Game game, (int oldX, int oldY) oldPos, (int newX, int newY) newPos)
+    {
+        if (IsCapture(game, newPos)) return false;
 
-    private static (double, ((int oldX, int oldY), (int newX, int newY))) QuiescenceSearch(Game game, int colour, 
+        bool isQuiet = true;
+
+        if (game.IsPromotingMove(oldPos, newPos))
+        {
+            Game copyGameQ = game.Copy();
+            copyGameQ.MovePiece(oldPos, newPos, 'Q');
+            isQuiet &= !IsAnyKingInCheck(copyGameQ);
+            
+            Game copyGameR = game.Copy();
+            copyGameR.MovePiece(oldPos, newPos, 'R');
+            isQuiet &= !IsAnyKingInCheck(copyGameR);
+            
+            Game copyGameB = game.Copy();
+            copyGameB.MovePiece(oldPos, newPos, 'B');
+            isQuiet &= !IsAnyKingInCheck(copyGameB);
+            
+            Game copyGameN = game.Copy();
+            copyGameN.MovePiece(oldPos, newPos, 'N');
+            isQuiet &= !IsAnyKingInCheck(copyGameN);
+
+            return isQuiet;
+        }
+
+        Game copyGame = game.Copy();
+        copyGame.MovePiece(oldPos, newPos);
+        return !IsAnyKingInCheck(copyGame);
+    }
+
+    private static bool IsAnyKingInCheck(Game game)
+    {
+        if (game.IsKingInCheck()) return true;
+        game.IsWhiteTurn = !game.IsWhiteTurn;
+        bool isKingInCheck = game.IsKingInCheck();
+        game.IsWhiteTurn = !game.IsWhiteTurn;
+        return isKingInCheck;
+    }
+
+    private static bool IsEndgame(Game game)
+    {
+        // If total material value is less than 2400 centi-pawns
+        int materialValue = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                if (game.Board[i, j] == "") continue;
+                materialValue += game.Board[i, j][1] switch
+                {
+                    'P' => 100,
+                    'N' => 320,
+                    'B' => 330,
+                    'R' => 500,
+                    'Q' => 900,
+                    'K' => 0,
+                    _ => throw new ArgumentException("Invalid piece")
+                };
+            }
+        }
+        
+        return materialValue < 2400;
+    }
+    
+    private static (double, ((int oldX, int oldY), (int newX, int newY)), char?) QuiescenceSearch(Game game, int colour, 
         double alpha, double beta)
     {
-        // TODO: Zugzwangs in pawn endgames
         double standPat = colour * Evaluate(game);
-        double value = standPat;
-        
-        if (value >= beta)
+    
+        if (standPat >= beta)
         {
-            return (beta, ((-1, -1), (-1, -1)));
+            return (beta, ((-1, -1), (-1, -1)), null);
         }
-        if (alpha < value)
+        if (alpha < standPat)
         {
-            alpha = value;
+            alpha = standPat;
         }
-
+    
         LinkedList.LinkedList<((int x, int y), (int x, int y))> childGames = GetChildGames(game, colour);
         if (childGames.Head is null)
         {
-            return (standPat, ((-1, -1), (-1, -1)));
+            return (standPat, ((-1, -1), (-1, -1)), null);
         }
-
+    
         ((int oldX, int oldY), (int newX, int newY)) move = ((-1, -1), (-1, -1));
-
+    
         Node<((int x, int y), (int x, int y))>? currentNode = childGames.Head;
         while (currentNode != null)
         {
-            if (!IsCapture(game, currentNode.Data.Item2))
+            if (IsQuiet(game, currentNode.Data.Item1, currentNode.Data.Item2))
             {
                 currentNode = currentNode.NextNode;
                 continue;
             }
-
+    
             // Delta pruning
             const double safetyMargin = 200;
             if (standPat + GetPieceMaterialValue(game, currentNode.Data.Item2) + safetyMargin < alpha)
@@ -345,46 +427,89 @@ public class Bot
                 currentNode = currentNode.NextNode;
                 continue;
             }
-            
-            // Deep copy
-            Game childGame = game.Copy();
-            childGame.MovePiece(currentNode.Data.Item1, currentNode.Data.Item2);
-            value = -QuiescenceSearch(childGame, -colour, -beta, -alpha).Item1;
-            if (value > alpha)
+    
+            if (game.IsPromotingMove(currentNode.Data.Item1, currentNode.Data.Item2))
             {
-                alpha = value;
-                move = currentNode.Data;
+                Game copyGameQ = game.Copy();
+                copyGameQ.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y] = 
+                    copyGameQ.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y][0] + "Q";
+                (alpha, beta, move) = QsAlphaBeta(copyGameQ, alpha, beta, colour, currentNode, move);
+                if (alpha >= beta) return (beta, move, 'Q');
+                
+                Game copyGameR = game.Copy();
+                copyGameR.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y] = 
+                    copyGameR.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y][0] + "R1";
+                (alpha, beta, move) = QsAlphaBeta(copyGameR, alpha, beta, colour, currentNode, move);
+                if (alpha >= beta) return (beta, move, 'R');
+                
+                Game copyGameB = game.Copy();
+                copyGameB.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y] = 
+                    copyGameB.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y][0] + "B";
+                (alpha, beta, move) = QsAlphaBeta(copyGameB, alpha, beta, colour, currentNode, move);
+                if (alpha >= beta) return (beta, move, 'N');
+                
+                Game copyGameN = game.Copy();
+                copyGameN.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y] = 
+                    copyGameN.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y][0] + "N";
+                (alpha, beta, move) = QsAlphaBeta(copyGameN, alpha, beta, colour, currentNode, move);
+                if (alpha >= beta) return (beta, move, 'B');
+            } else
+            {
+                (alpha, beta, move) = QsAlphaBeta(game, alpha, beta, colour, currentNode, move);
+                if (alpha >= beta) return (beta, move, null);
             }
-            if (alpha >= beta) return (beta, move);
+    
             currentNode = currentNode.NextNode;
         }
-
-        return (alpha, move);
-    }
     
+        return (alpha, move, null);
+    }
+
+    private static (double alpha, double beta, ((int oldX, int oldY), (int newX, int newY)) move) QsAlphaBeta(
+        Game game, double alpha, double beta, int colour, Node<((int x, int y), (int x, int y))>? currentNode,
+        ((int oldX, int oldY), (int newX, int newY)) move)
+    {
+        // Deep copy
+        Game childGame = game.Copy();
+        childGame.MovePiece(currentNode!.Data.Item1, currentNode.Data.Item2);
+        double value = -QuiescenceSearch(childGame, -colour, -beta, -alpha).Item1;
+        if (!(value > alpha)) return (alpha, beta, move);
+        alpha = value;
+        move = currentNode.Data;
+
+        return (alpha, beta, move);
+    }
+
     private static double GetPieceMaterialValue(Game game, (int x, int y) newPos)
     {
-        return game.Board[newPos.x, newPos.y][1] switch
+        try
         {
-            'P' => 100,
-            'N' => 320,
-            'B' => 330,
-            'R' => 500,
-            'Q' => 900,
-            'K' => 0,
-            _ => throw new ArgumentException("Invalid piece")
-        };
+            return game.Board[newPos.x, newPos.y][1] switch
+            {
+                'P' => 100,
+                'N' => 320,
+                'B' => 330,
+                'R' => 500,
+                'Q' => 900,
+                'K' => 0,
+                _ => throw new ArgumentException("Invalid piece")
+            };
+        }
+        catch (Exception _)
+        {
+            return 0;
+        }
     }
-    
+
     // TODO: Implement capture heuristics, killer move and history heuristics
     // https://www.duo.uio.no/bitstream/handle/10852/53769/master.pdf?sequence=1
-    private static (double, ((int oldX, int oldY), (int newX, int newY))) Negamax(Game game, int depth, int colour,
+    private (double, ((int oldX, int oldY), (int newX, int newY)), char?) Negamax(Game game, int depth, int colour,
         double alpha, double beta, DateTime startTime, double? windowCentre = null)
     {
         int[] hash = game.GetHash();
-        if (TranspositionTable.TryGetValue(hash, out (double, int) entry) && entry.Item2 >= depth)
+        if (_transpositionTable.TryGetValue(hash, out (double, int) entry) && entry.Item2 >= depth)
         {
-            return (entry.Item1, ((-1, -1), (-1, -1)));
+            return (entry.Item1, ((-1, -1), (-1, -1)), null);
         }
         
         // Is terminal
@@ -394,17 +519,16 @@ public class Bot
         }
         if (game.IsFinished)
         {
-            return (game.Score, ((-1, -1), (-1, -1)));
+            return (game.Score, ((-1, -1), (-1, -1)), null);
         }        
-        // Null move pruning TODO: Zugzwangs in pawn endgames
-        if (!game.IsKingInCheck())
+        if (!game.IsKingInCheck() && !_inEndgame)
         {
             Game nullMoveGame = game.Copy();
             nullMoveGame.MakeNullMove();
             double nullMoveValue = -Negamax(nullMoveGame, depth - 1, -colour, -beta, -beta + 1, startTime).Item1;
             if (nullMoveValue >= beta && depth >= 3)
             {
-                return (nullMoveValue, ((-1, -1), (-1, -1)));
+                return (nullMoveValue, ((-1, -1), (-1, -1)), null);
             }
         }
 
@@ -415,38 +539,97 @@ public class Bot
         ((int oldX, int oldY), (int newX, int newY)) move = ((-1, -1), (-1, -1));
 
         Node<((int x, int y), (int x, int y))>? currentNode = childGames.Head;
+
+        char? promotionPiece = null;
         while (currentNode != null)
         {
             int extension = game.Board[currentNode.Data.Item2.x, currentNode.Data.Item2.y] != "" ? 1 : 0;
-            
-            // Deep copy
-            Game childGame = game.Copy();
-            childGame.MovePiece(currentNode.Data.Item1, currentNode.Data.Item2);
-            
-            const double aspirationWindow = 250;
-            double windowAlpha = windowCentre.HasValue ? windowCentre.Value - aspirationWindow : alpha;
-            double windowBeta = windowCentre.HasValue ? windowCentre.Value + aspirationWindow : beta;
-            
-            double value2 = -Negamax(childGame, depth - 1 + extension, -colour, -windowBeta, -windowAlpha, startTime)
-                .Item1;
-            
-            if (value2 <= windowAlpha || value2 >= beta)
+            bool moveChanged;
+            promotionPiece = null;
+
+            if (game.IsPromotingMove((currentNode.Data.Item1.x, currentNode.Data.Item1.y),
+                    (currentNode.Data.Item2.x, currentNode.Data.Item2.y)))
             {
-                value2 = -Negamax(childGame, depth - 1 + extension, -colour, -beta, -alpha, startTime).Item1;
+                Game childGameQ = game.Copy();
+                childGameQ.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y] =
+                    childGameQ.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y][0] + "Q";
+                childGameQ.MovePiece(currentNode.Data.Item1, currentNode.Data.Item2);
+                (value, move, alpha, moveChanged) = NegamaxMain(childGameQ, depth, colour, alpha, beta, startTime,
+                    windowCentre, currentNode, value, extension, move);
+                if (moveChanged) promotionPiece = 'Q';
+                if (alpha >= beta) break;
+                
+                Game childGameR = game.Copy();
+                childGameR.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y] =
+                    childGameR.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y][0] + "R1";
+                childGameR.MovePiece(currentNode.Data.Item1, currentNode.Data.Item2);
+                (value, move, alpha, moveChanged) = NegamaxMain(childGameR, depth, colour, alpha, beta, startTime,
+                    windowCentre, currentNode, value, extension, move);
+                if (moveChanged) promotionPiece = 'R';
+                if (alpha >= beta) break;
+                
+                Game childGameB = game.Copy();
+                childGameB.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y] =
+                    childGameB.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y][0] + "B";
+                childGameB.MovePiece(currentNode.Data.Item1, currentNode.Data.Item2);
+                (value, move, alpha, moveChanged) = NegamaxMain(childGameB, depth, colour, alpha, beta, startTime,
+                    windowCentre, currentNode, value, extension, move);
+                if (moveChanged) promotionPiece = 'B';
+                if (alpha >= beta) break;
+                
+                Game childGameN = game.Copy();
+                childGameN.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y] =
+                    childGameN.Board[currentNode.Data.Item1.x, currentNode.Data.Item1.y][0] + "N";
+                childGameN.MovePiece(currentNode.Data.Item1, currentNode.Data.Item2);
+                (value, move, alpha, moveChanged) = NegamaxMain(childGameN, depth, colour, alpha, beta, startTime,
+                    windowCentre, currentNode, value, extension, move);
+                if (moveChanged) promotionPiece = 'N';
+                if (alpha >= beta) break;
+            }
+            else
+            {
+                Game childGame = game.Copy();
+                childGame.MovePiece(currentNode.Data.Item1, currentNode.Data.Item2);
+                (value, move, alpha, moveChanged) = NegamaxMain(childGame, depth, colour, alpha, beta, startTime,
+                    windowCentre, currentNode, value, extension, move);
+                if (moveChanged) promotionPiece = null;
+                if (alpha >= beta) break;
             }
             
-            if (value2 > value)
-            {
-                value = value2;
-                move = currentNode.Data;
-            }
-            alpha = Math.Max(alpha, value);
-            if (alpha >= beta) break;
             currentNode = currentNode.NextNode;
         }
 
-        TranspositionTable[hash] = (value, depth);
-        return (value, move);
+        _transpositionTable[hash] = (value, depth);
+        return (value, move, promotionPiece);
+    }
+
+    private (double value, ((int oldX, int oldY), (int newX, int newY)) move, double alpha, bool moveChanged) 
+        NegamaxMain(Game game, int depth, int colour, double alpha, double beta, DateTime startTime, 
+            double? windowCentre, Node<((int x, int y), (int x, int y))> currentNode, double value, int extension,
+            ((int oldX, int oldY), (int newX, int newY)) move)
+    {
+        bool moveChanged = false;
+        const double aspirationWindow = 250;
+        double windowAlpha = windowCentre.HasValue ? windowCentre.Value - aspirationWindow : alpha;
+        double windowBeta = windowCentre.HasValue ? windowCentre.Value + aspirationWindow : beta;
+            
+        double value2 = -Negamax(game, depth - 1 + extension, -colour, -windowBeta, -windowAlpha, startTime)
+            .Item1;
+            
+        if (value2 <= windowAlpha || value2 >= beta)
+        {
+            value2 = -Negamax(game, depth - 1 + extension, -colour, -beta, -alpha, startTime).Item1;
+        }
+            
+        if (value2 > value)
+        {
+            value = value2;
+            move = currentNode.Data;
+            moveChanged = true;
+        }
+        alpha = Math.Max(alpha, value);
+        
+        return (value, move, alpha, moveChanged);
     }
 
     private static double Evaluate(Game game)
@@ -482,10 +665,40 @@ public class Bot
     
     private static double Evaluate(Game game, ((int oldX, int oldY), (int newX, int newY)) move)
     {
-        // Deep copy
-        Game childGame = game.Copy();
-        childGame.MovePiece(move.Item1, move.Item2);
-        return Evaluate(childGame);
+        if (!game.IsPromotingMove(move.Item1, move.Item2))
+        {
+            Game childGame = game.Copy();
+            childGame.MovePiece(move.Item1, move.Item2);
+            return Evaluate(childGame);
+        }
+
+        double evaluation = double.NegativeInfinity;
+        
+        Game childGameQ = game.Copy();
+        childGameQ.Board[move.Item1.oldX, move.Item1.oldY] =
+            childGameQ.Board[move.Item1.oldX, move.Item1.oldY][0] + "Q";
+        childGameQ.MovePiece(move.Item1, move.Item2);
+        evaluation = Math.Max(Evaluate(childGameQ), evaluation);
+        
+        Game childGameR = game.Copy();
+        childGameR.Board[move.Item1.oldX, move.Item1.oldY] =
+            childGameR.Board[move.Item1.oldX, move.Item1.oldY][0] + "R1";
+        childGameR.MovePiece(move.Item1, move.Item2);
+        evaluation = Math.Max(Evaluate(childGameR), evaluation);
+        
+        Game childGameB = game.Copy();
+        childGameB.Board[move.Item1.oldX, move.Item1.oldY] =
+            childGameB.Board[move.Item1.oldX, move.Item1.oldY][0] + "B";
+        childGameB.MovePiece(move.Item1, move.Item2);
+        evaluation = Math.Max(Evaluate(childGameQ), evaluation);
+        
+        Game childGameN = game.Copy();
+        childGameN.Board[move.Item1.oldX, move.Item1.oldY] =
+            childGameN.Board[move.Item1.oldX, move.Item1.oldY][0] + "N";
+        childGameN.MovePiece(move.Item1, move.Item2);
+        evaluation = Math.Max(Evaluate(childGameQ), evaluation);
+
+        return evaluation;
     }
     
     private static int GetPieceSquareValue(string piece, int x, int y)
