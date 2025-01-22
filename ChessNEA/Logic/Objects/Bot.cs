@@ -87,6 +87,8 @@ public class Bot(bool isWhite = false)
     // Graph representing openings with at least 100k games played by masters, according to Lichess as of 2025-01-19.
     private static readonly Dictionary<string, List<string>> OpeningsBook = new()
     {
+        // 0. Root
+        { "", ["e2e4", "d2d4", "g1f3", "c2c4"] },
         // 1. White
         { "e2e4", ["e2e4 c7c5", "e2e4 e7e5", "e2e4 e7e6"] }, // King's Pawn Opening
         { "d2d4", ["d2d4 g8f6", "d2d4 d7d5"] }, // Queen's Pawn Opening
