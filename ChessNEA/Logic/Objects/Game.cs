@@ -53,7 +53,7 @@ public class Game
     public double Score { get; set; }
     public bool IsWhiteTurn { get; set; }
     private int _movesSincePawnOrCapture;
-    public ((int oldX, int oldY), (int newX, int newY)) LastMove { get; private set; }
+    public ((int oldX, int oldY), (int newX, int newY)) LastMove { get; private set; } = ((-1, -1), (-1, -1));
 
     private readonly Dictionary<int[], int> _boardStates;
 

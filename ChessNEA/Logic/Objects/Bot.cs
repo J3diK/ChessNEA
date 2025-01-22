@@ -218,6 +218,8 @@ public class Bot(bool isWhite = false)
     /// <returns>The move that the bot determines to be the best</returns>
     public Task<((int oldX, int oldY), (int newX, int newY), char? promotionPiece)> GetMove(Game game)
     {
+        Console.WriteLine(_openingMoves + " " + EncodeMove(game.LastMove));
+        
         if (!_inOpeningBook || !OpeningsBook.ContainsKey((_openingMoves + " " + EncodeMove(game.LastMove)).Trim()))
         {
             _inOpeningBook = false;
@@ -243,8 +245,8 @@ public class Bot(bool isWhite = false)
     
     private static string EncodeMove(((int oldX, int oldY), (int newX, int newY)) move)
     {
-        // +97 converts 1 to A, 2 to B, etc.
-        return
+        return move.Equals(((-1, -1), (-1, -1))) ? "" :
+            // +97 converts 1 to A, 2 to B, etc.
             $"{(char)(move.Item1.oldY + 97)}{move.Item1.oldX + 1}{(char)(move.Item2.newY + 97)}{move.Item2.newX + 1}";
     }
     
