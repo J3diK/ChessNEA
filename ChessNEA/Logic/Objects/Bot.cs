@@ -218,8 +218,6 @@ public class Bot(bool isWhite = false)
     /// <returns>The move that the bot determines to be the best</returns>
     public Task<((int oldX, int oldY), (int newX, int newY), char? promotionPiece)> GetMove(Game game)
     {
-        Console.WriteLine(_openingMoves + " " + EncodeMove(game.LastMove));
-        
         if (!_inOpeningBook || !OpeningsBook.ContainsKey((_openingMoves + " " + EncodeMove(game.LastMove)).Trim()))
         {
             _inOpeningBook = false;

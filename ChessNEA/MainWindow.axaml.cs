@@ -34,6 +34,8 @@ public partial class MainWindow : Window
         ResignOrNewGameButton.Content = "New Game";
         ResignOrNewGameButton.Click -= ClickButtonResign;
         ResignOrNewGameButton.Click += ClickButtonNewGame;
+        BottomPlayer.FontSize = 28;
+        TopPlayer.FontSize = 28;
     }
 
     private void InitializeBoard(LinkedList<(int, int)>? moves = null)
@@ -133,6 +135,11 @@ public partial class MainWindow : Window
 
     private void MovePiece((int x, int y) position, char? promotionPiece = null)
     {
+        if (_game.Board[position.x, position.y] != "")
+        {
+            AddCapture(_game.Board[position.x, position.y]);
+        }
+        
         if (promotionPiece is not null)
         {
             _game.MovePiece(_selectedPiece, position, promotionPiece);
@@ -145,6 +152,18 @@ public partial class MainWindow : Window
 
         if (!_game.IsFinished) return;
         DisplayGameEnd();
+    }
+    
+    private void AddCapture(string piece)
+    {
+        if ((piece[0] == 'w' && _isWhiteOnBottom) || (piece[0] == 'b' && !_isWhiteOnBottom))
+        {
+            BottomPlayer.Text += GetSymbol(piece);
+        }
+        else
+        {
+            TopPlayer.Text += GetSymbol(piece);
+        }
     }
     
     
@@ -187,6 +206,8 @@ public partial class MainWindow : Window
         _bot = new Bot(!_isPlayerWhite);
         _game = new Game();
         _selectedPiece = (0, 0);
+        BottomPlayer.Text = "";
+        TopPlayer.Text = "";
         _isWhiteOnBottom = _isPlayerWhite;
         InitializeBoard();
         WinnerText.IsVisible = false;

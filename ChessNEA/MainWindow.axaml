@@ -55,9 +55,6 @@
         
         <StackPanel Grid.Column="1" Orientation="Vertical">
             <Separator Height="90" Background="Transparent"/>
-            <TextBlock Text="Player 1" FontSize="20"/>
-            <TextBlock Text="Player 2" FontSize="20"/>
-            
             <Button Click="ClickButtonRotateBoard">⭯ Rotate Board</Button>
             <Button x:Name="ResignOrNewGameButton">Placeholder Text</Button>
         </StackPanel>
