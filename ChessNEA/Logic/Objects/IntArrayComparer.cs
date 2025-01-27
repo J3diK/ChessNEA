@@ -7,17 +7,13 @@ public class IntArrayComparer : IEqualityComparer<int[]>
 {
     public bool Equals(int[]? x, int[]? y)
     {
-        if (x is null || y is null)
-        {
-            return false;
-        }
-        
-        if (x.Length != y.Length)
-        {
-            return false;
-        }
+        if (x is null || y is null) return false;
+        if (x.Length != y.Length) return false;
 
-        return !x.Where((t, i) => t != y[i]).Any();
+        for (int i = 0; i < x.Length; i++)
+            if (x[i] != y[i])
+                return false;
+        return true;
     }
 
     public int GetHashCode(int[] obj)

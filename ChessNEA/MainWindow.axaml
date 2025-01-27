@@ -8,53 +8,59 @@
         CanResize="False"
         Height="1000"
         Width="1600">
-    
+
     <Grid ColumnDefinitions="900,  *">
         <Grid Grid.Column="0" RowDefinitions="100, *, 100">
-            <Image Grid.Row="1" Source="/Assets/Images/Board.png" Width="800"/>
-            <UniformGrid Grid.Row="1" Grid.Column="0" x:Name="DisplayMovesGrid"
+            <Image Grid.Row="1" Source="/Assets/Images/Board.png"
+                   Width="800" />
+            <UniformGrid Grid.Row="1" Grid.Column="0"
+                         x:Name="DisplayMovesGrid"
                          Width="800"
                          Height="800"
                          Rows="8"
-                         Columns="8"/>
+                         Columns="8" />
             <UniformGrid Grid.Row="1" Grid.Column="0" x:Name="BoardGrid"
                          Width="800"
                          Height="800"
                          Rows="8"
-                         Columns="8"/>
-            
+                         Columns="8" />
+
             <!-- TODO: Add save game button when database is implemented -->
             <Label Grid.Row="1" Grid.Column="0" x:Name="WinnerText"
-                       HorizontalAlignment="Center" 
-                       VerticalAlignment="Center"
-                       FontSize="72"
-                       Width="800"
-                       Height="800"
-                       IsVisible="False"
-                       VerticalContentAlignment="Center"
-                       HorizontalContentAlignment="Center"/>
-            
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   FontSize="72"
+                   Width="800"
+                   Height="800"
+                   IsVisible="False"
+                   VerticalContentAlignment="Center"
+                   HorizontalContentAlignment="Center" />
+
             <Label Grid.Row="1" Grid.Column="0" x:Name="BlockInput"
-                       HorizontalAlignment="Center" 
-                       VerticalAlignment="Center"
-                       Width="800"
-                       Height="800"
-                       IsVisible="False"
-                       VerticalContentAlignment="Center"
-                       HorizontalContentAlignment="Center"
-                       Background="Transparent"/>
-            
-            <Grid Grid.Row="0" ColumnDefinitions="100, *" RowDefinitions="70, *">
-                <TextBlock x:Name="TopPlayer" Grid.Column="1" Grid.Row="1" Text="Player 1" FontSize="20"/>
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Width="800"
+                   Height="800"
+                   IsVisible="False"
+                   VerticalContentAlignment="Center"
+                   HorizontalContentAlignment="Center"
+                   Background="Transparent" />
+
+            <Grid Grid.Row="0" ColumnDefinitions="100, *"
+                  RowDefinitions="70, *">
+                <TextBlock x:Name="TopPlayer" Grid.Column="1" Grid.Row="1"
+                           Text="Player 1" FontSize="20" />
             </Grid>
-            
-            <Grid Grid.Row="2" ColumnDefinitions="100, *" RowDefinitions="10, 60">
-                <TextBlock x:Name="BottomPlayer" Grid.Column="1" Grid.Row="1" Text="Player 1" FontSize="20"/>
+
+            <Grid Grid.Row="2" ColumnDefinitions="100, *"
+                  RowDefinitions="10, 60">
+                <TextBlock x:Name="BottomPlayer" Grid.Column="1"
+                           Grid.Row="1" Text="Player 1" FontSize="20" />
             </Grid>
         </Grid>
-        
+
         <StackPanel Grid.Column="1" Orientation="Vertical">
-            <Separator Height="90" Background="Transparent"/>
+            <Separator Height="90" Background="Transparent" />
             <Button Click="ClickButtonRotateBoard">⭯ Rotate Board</Button>
             <Button x:Name="ResignOrNewGameButton">Placeholder Text</Button>
         </StackPanel>

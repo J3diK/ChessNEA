@@ -7,15 +7,18 @@
         Title="PromotionOptions"
         CanResize="False"
         Height="150"
-        Width="300"
->
+        Width="300">
     <StackPanel>
         <StackPanel Orientation="Horizontal">
-            <RadioButton Content="Queen" GroupName="PromotionOptions" Click="ClickButtonPromote" />
-            <RadioButton Content="Rook" GroupName="PromotionOptions" Click="ClickButtonPromote" />
-            <RadioButton Content="Bishop" GroupName="PromotionOptions" Click="ClickButtonPromote" />
-            <RadioButton Content="Knight" GroupName="PromotionOptions" Click="ClickButtonPromote" />
+            <RadioButton Content="Queen" GroupName="PromotionOptions"
+                         Click="ClickButtonPromote" />
+            <RadioButton Content="Rook" GroupName="PromotionOptions"
+                         Click="ClickButtonPromote" />
+            <RadioButton Content="Bishop" GroupName="PromotionOptions"
+                         Click="ClickButtonPromote" />
+            <RadioButton Content="Knight" GroupName="PromotionOptions"
+                         Click="ClickButtonPromote" />
         </StackPanel>
     </StackPanel>
-    
+
 </Window>

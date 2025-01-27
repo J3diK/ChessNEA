@@ -30,23 +30,20 @@ public class LinkedList<T>
 
         Count++;
     }
-    
+
     public (LinkedList<T>, LinkedList<T>) SplitList(int index)
     {
         LinkedList<T> left = new();
         LinkedList<T> right = new();
-        
+
         Node<T>? node = Head;
         for (int i = 0; i < index; i++)
         {
-            if (node is null)
-            {
-                throw new IndexOutOfRangeException();
-            }
+            if (node is null) throw new IndexOutOfRangeException();
             left.AddNode(node.Data!);
             node = node.NextNode;
         }
-        
+
         while (node is not null)
         {
             right.AddNode(node.Data!);
@@ -55,35 +52,26 @@ public class LinkedList<T>
 
         return (left, right);
     }
-    
+
     public Node<T> GetNode(int index)
     {
         Node<T>? node = Head;
         for (int i = 0; i < index; i++)
         {
-            if (node is null)
-            {
-                throw new IndexOutOfRangeException();
-            }
+            if (node is null) throw new IndexOutOfRangeException();
             node = node.NextNode;
         }
-        
-        if (node is null)
-        {
-            throw new IndexOutOfRangeException();
-        }
+
+        if (node is null) throw new IndexOutOfRangeException();
 
         return node;
     }
-    
+
     public void RemoveNode(T data)
     {
         Node<T>? node = Head;
-        
-        if (node is null)
-        {
-            return;
-        }
+
+        if (node is null) return;
 
         if (node.Data != null && node.Data.Equals(data))
         {
@@ -92,9 +80,8 @@ public class LinkedList<T>
             Count--;
             return;
         }
-        
+
         while (node.NextNode is not null)
-        {
             try
             {
                 node = node.NextNode;
@@ -110,19 +97,12 @@ public class LinkedList<T>
                 Console.WriteLine(e);
                 throw;
             }
-        }
     }
 
-    public static LinkedList<T>? operator+(LinkedList<T> list1, LinkedList<T> list2)
+    public static LinkedList<T>? operator +(LinkedList<T> list1, LinkedList<T> list2)
     {
-        if (list1.Head is null)
-        {
-            return list2.Head is null ? null : list2;
-        }
-        if (list2.Head is null)
-        {
-            return list1.Head is null ? null : list1;
-        }
+        if (list1.Head is null) return list2.Head is null ? null : list2;
+        if (list2.Head is null) return list1.Head is null ? null : list1;
 
         Node<T>? node = list2.Head;
 
@@ -139,24 +119,15 @@ public class LinkedList<T>
     public bool Contains(T data)
     {
         Node<T>? node = Head;
-        
-        if (node is null)
-        {
-            return false;
-        }
 
-        if (node.Data != null && node.Data.Equals(data))
-        {
-            return true;
-        }
-        
+        if (node is null) return false;
+
+        if (node.Data != null && node.Data.Equals(data)) return true;
+
         while (node.NextNode is not null)
         {
             node = node.NextNode;
-            if (node.Data != null && node.Data.Equals(data))
-            {
-                return true;
-            }
+            if (node.Data != null && node.Data.Equals(data)) return true;
         }
 
         return false;
