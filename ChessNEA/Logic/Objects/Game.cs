@@ -544,40 +544,37 @@ public class Game
         bool isLeading,
         bool checkingCheck)
     {
-        LinkedList.LinkedList<(int x, int y)> moves = new();
-
         int xMultiplier = isLeading ? 1 : -1;
+        return GetMovesBishopHalfLine(position, left, xMultiplier, true, checkingCheck) + 
+            GetMovesBishopHalfLine(position, right, xMultiplier, false, checkingCheck) 
+            ?? new LinkedList.LinkedList<(int, int)>();
+    }
+
+    private LinkedList.LinkedList<(int, int)> GetMovesBishopHalfLine((int x, int y) position, int max, int xMultiplier,
+        bool isLeft, bool checkingCheck)
+    {
+        int directionMultiplier = isLeft ? 1 : -1;
+        LinkedList.LinkedList<(int x, int y)> moves = new();
         bool isCollision = false;
 
-        // Check left
-        for (int i = 1; i <= left && !isCollision; i++)
-            if (Board[position.x + i * xMultiplier, position.y - i] != "")
+        for (int i = 1; i <= max && !isCollision; i++)
+        {
+            int posX = position.x + i * xMultiplier * directionMultiplier;
+            int posY = position.y - i * directionMultiplier;
+            
+            if (Board[posX, posY] != "")
             {
                 isCollision = true;
 
-                if (IsCurrentPlayerColour(Board[position.x + i * xMultiplier, position.y - i])) break;
-                moves.AddNode((position.x + i * xMultiplier, position.y - i));
+                if (IsCurrentPlayerColour(Board[posX, posY])) break;
+                moves.AddNode((posX, posY));
             }
             else if (!checkingCheck)
             {
-                moves.AddNode((position.x + i * xMultiplier, position.y - i));
+                moves.AddNode((posX, posY));
             }
-
-        // Check right
-        isCollision = false;
-        for (int i = 1; i <= right && !isCollision; i++)
-            if (Board[position.x - i * xMultiplier, position.y + i] != "")
-            {
-                isCollision = true;
-
-                if (IsCurrentPlayerColour(Board[position.x - i * xMultiplier, position.y + i])) break;
-                moves.AddNode((position.x - i * xMultiplier, position.y + i));
-            }
-            else if (!checkingCheck)
-            {
-                moves.AddNode((position.x - i * xMultiplier, position.y + i));
-            }
-
+        }
+        
         return moves;
     }
 
@@ -589,78 +586,47 @@ public class Game
     /// <returns>A list of possible moves</returns>
     private LinkedList.LinkedList<(int, int)>? GetMovesRook((int x, int y) position, bool checkingCheck = false)
     {
-        LinkedList.LinkedList<(int x, int y)> moves = new();
-
         int verticalDownMax = 7 - position.x;
         int verticalUpMax = position.x;
         int horizontalRightMax = 7 - position.y;
         int horizontalLeftMax = position.y;
+        
+        LinkedList.LinkedList<(int, int)>? moves = 
+            GetMovesRookHalfLine(position, verticalUpMax, true, false, checkingCheck);
+        moves += GetMovesRookHalfLine(position, verticalDownMax, true, true, checkingCheck);
+        moves = (moves ?? new LinkedList.LinkedList<(int, int)>()) +
+                GetMovesRookHalfLine(position, horizontalLeftMax, false, false, checkingCheck);
+        moves = (moves ?? new LinkedList.LinkedList<(int, int)>()) +
+                GetMovesRookHalfLine(position, horizontalRightMax, false, true, checkingCheck);
+        
+        return moves;
+    }
+    
+    private LinkedList.LinkedList<(int, int)> GetMovesRookHalfLine((int x, int y) position, int max,
+        bool isX, bool isPositive, bool checkingCheck)
+    {
+        LinkedList.LinkedList<(int, int)> moves = new();
         bool isCollision = false;
 
-        for (int i = 1; i <= verticalUpMax && !isCollision; i++)
+        for (int i = 1; i <= max && !isCollision; i++)
         {
-            if (Board[position.x - i, position.y] == "")
+            int posX = isX ? position.x + i * (isPositive ? 1 : -1) : position.x;
+            int posY = isX ? position.y : position.y + i * (isPositive ? 1 : -1);
+
+            if (Board[posX, posY] == "")
             {
-                if (!checkingCheck) moves.AddNode((position.x - i, position.y));
+                if (!checkingCheck) moves.AddNode((posX, posY));
                 continue;
             }
-
+            
             isCollision = true;
             // If same colour
-            if (IsCurrentPlayerColour(Board[position.x - i, position.y])) break;
-
-            moves.AddNode((position.x - i, position.y));
+            if (IsCurrentPlayerColour(Board[posX, posY])) break;
+            
+            moves.AddNode((posX, posY));
         }
-
-        isCollision = false;
-        for (int i = 1; i <= verticalDownMax && !isCollision; i++)
-        {
-            if (Board[position.x + i, position.y] == "")
-            {
-                if (!checkingCheck) moves.AddNode((position.x + i, position.y));
-                continue;
-            }
-
-            isCollision = true;
-            // If same colour
-            if (IsCurrentPlayerColour(Board[position.x + i, position.y])) break;
-
-            moves.AddNode((position.x + i, position.y));
-        }
-
-        isCollision = false;
-        for (int i = 1; i <= horizontalRightMax && !isCollision; i++)
-        {
-            if (Board[position.x, position.y + i] == "")
-            {
-                if (!checkingCheck) moves.AddNode((position.x, position.y + i));
-                continue;
-            }
-
-            isCollision = true;
-            // If same colour
-            if (IsCurrentPlayerColour(Board[position.x, position.y + i])) break;
-
-            moves.AddNode((position.x, position.y + i));
-        }
-
-        isCollision = false;
-        for (int i = 1; i <= horizontalLeftMax && !isCollision; i++)
-        {
-            if (Board[position.x, position.y - i] == "")
-            {
-                if (!checkingCheck) moves.AddNode((position.x, position.y - i));
-                continue;
-            }
-
-            isCollision = true;
-            // If same colour
-            if (IsCurrentPlayerColour(Board[position.x, position.y - i])) break;
-
-            moves.AddNode((position.x, position.y - i));
-        }
-
-        return moves.Head is null ? null : moves;
+        
+        return moves;
     }
 
     /// <summary>

@@ -181,7 +181,7 @@ public class Bot(int maxDepthPly, bool isWhite = false)
 
         return Merge(game, colour, leftTask.Result, rightTask.Result);
     }
-
+    
     private LinkedList.LinkedList<((int x, int y), (int x, int y))> Merge(Game game, int colour,
         LinkedList.LinkedList<((int x, int y), (int x, int y))> left,
         LinkedList.LinkedList<((int x, int y), (int x, int y))> right)
