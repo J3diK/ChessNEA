@@ -18,6 +18,7 @@ public class IntArrayComparer : IEqualityComparer<int[]>
 
     public int GetHashCode(int[] obj)
     {
+        // Perform XOR on all elements in the array
         return obj.Aggregate(0, (current, i) => current ^ i);
     }
 }

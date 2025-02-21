@@ -7,41 +7,38 @@ namespace ChessNEA.Logic.Objects;
 public class Game
 {
     /// <summary>
-    ///     Stores how many times a position (state) has been repeated with the encoded
-    ///     board as the key and the number of times it has been repeated as the value.
+    ///     Stores how many times a position (state) has been repeated with the
+    ///     encoded board as the key and the number of times it has been
+    ///     repeated as the value.
     /// </summary>
     private readonly Dictionary<int[], int> _boardStates;
 
     private (int x, int y) _blackKingPosition = (7, 4);
-
-    private int _movesSincePawnOrCapture;
     private (int x, int y) _whiteKingPosition = (0, 4);
 
-    public Game(bool? isWhiteTurn = null, string[,]? board = null)
-    {
-        if (board is not null) Board = board;
-        // True by default (is null)
-        IsWhiteTurn = isWhiteTurn is null || isWhiteTurn.Value;
-        _boardStates = new Dictionary<int[], int>(new IntArrayComparer())
-        {
-            { EncodeBoard(Board), 1 }
-        };
-    }
+    private int _movesSincePawnOrCapture;
 
     public bool IsFinished { get; private set; }
 
     /// <summary>
-    ///     Positive infinity if white wins, negative infinity if black wins, 0 if it is a draw.
+    ///     Positive infinity if white wins, negative infinity if black wins, 0
+    ///     if it is a draw.
     /// </summary>
     public int Score { get; set; }
 
     public bool IsWhiteTurn { get; set; }
-    public ((int oldX, int oldY), (int newX, int newY)) LastMove { get; private set; } = ((-1, -1), (-1, -1));
+
+    public ((int oldX, int oldY), (int newX, int newY)) LastMove
+    {
+        get;
+        private set;
+    } = ((-1, -1), (-1, -1));
 
     /// <summary>
-    ///     Each square is either an empty string, denoting a lack of a piece, or a 2 character string.
-    ///     The 1st character is 'w' or 'b', denoting whether a piece is white or black.
-    ///     The 2nd character denotes the piece type as follows:
+    ///     Each square is either an empty string, denoting a lack of a piece,
+    ///     or a 2 character string. The 1st character is 'w' or 'b', denoting
+    ///     whether a piece is white or black. The 2nd character denotes the
+    ///     piece type as follows:
     ///     <list type="bullet">
     ///         <item>
     ///             <description>'P' for Pawn</description>
@@ -62,9 +59,11 @@ public class Game
     ///             <description>'K' for King</description>
     ///         </item>
     ///     </list>
-    ///     The 3rd character for pawns is either 0, 1, or 2 to denote if a pawn can be taken en passant.
-    ///     A 0 means that it cannot currently be taken, a 1 means it can, a 2 means it never can.
-    ///     The 3rd character for rooks and kings is either 0 or 1 and denotes if the rook has moved or not.
+    ///     The 3rd character for pawns is either 0, 1, or 2 to denote if a pawn
+    ///     can be taken en passant. A 0 means that it cannot currently be
+    ///     taken, a 1 means it can, a 2 means it never can. The 3rd character
+    ///     for rooks and kings is either 0 or 1 and denotes if the rook has
+    ///     moved or not.
     /// </summary>
     public string[,] Board { get; } =
     {
@@ -78,10 +77,22 @@ public class Game
         { "bP0", "bP0", "bP0", "bP0", "bP0", "bP0", "bP0", "bP0" }, // 7
         { "bR0", "bN", "bB", "bQ", "bK0", "bB", "bN", "bR0" } // 8
     };
+    
+    public Game(bool? isWhiteTurn = null, string[,]? board = null)
+    {
+        if (board is not null) Board = board;
+        // True by default (is null)
+        IsWhiteTurn = isWhiteTurn is null || isWhiteTurn.Value;
+        _boardStates = new Dictionary<int[], int>(new IntArrayComparer())
+        {
+            { EncodeBoard(Board), 1 }
+        };
+    }
 
     /// <summary>
-    ///     Updates _boardStates with the new board state. If the board state is already in the dictionary,
-    ///     the value is incremented by 1. If not, the board state is added to the dictionary with a value of 1.
+    ///     Updates _boardStates with the new board state. If the board state is
+    ///     already in the dictionary, the value is incremented by 1. If not,
+    ///     the board state is added to the dictionary with a value of 1.
     /// </summary>
     /// <param name="boardState"></param>
     private void UpdateBoardStates(int[] boardState)
@@ -93,7 +104,8 @@ public class Game
     }
 
     /// <summary>
-    ///     For null move pruning. Treats the current players move as being one where no piece is moved.
+    ///     For null move pruning. Treats the current players move as being one
+    ///     where no piece is moved.
     /// </summary>
     public void MakeNullMove()
     {
@@ -102,15 +114,8 @@ public class Game
     }
 
     /// <summary>
-    ///     Used for the transposition table in Bot. Returns value for the hash/key for the board state.
-    /// </summary>
-    public int[] GetHash()
-    {
-        return EncodeBoard(Board);
-    }
-
-    /// <summary>
-    ///     Checks if a position has been repeated 3 times and if so, then marks the game as finished and drawn.
+    ///     Checks if a position has been repeated 3 times and if so, then marks
+    ///     the game as finished and drawn.
     /// </summary>
     private void CheckRepeatPositions()
     {
@@ -123,13 +128,18 @@ public class Game
     }
 
     /// <summary>
-    ///     Encodes the board into an array of integers. Each integer represents a row on the board.
-    ///     The leftmost bit represents the colour of the piece, the next 3 bits represent the piece type.
+    ///     Encodes the board into an array of integers. Each integer represents
+    ///     a row on the board. The leftmost bit represents the colour of the
+    ///     piece, the next 3 bits represent the piece type.
     /// </summary>
-    /// <param name="board">A 2D string array representation of the current board state</param>
+    /// <param name="board">
+    ///     A 2D string array representation of the current board state
+    /// </param>
     /// <returns>The encoded board</returns>
-    /// <exception cref="ArgumentException">For an invalid colour or piece type</exception>
-    private static int[] EncodeBoard(string[,] board)
+    /// <exception cref="ArgumentException">
+    ///     For an invalid colour or piece type
+    /// </exception>
+    public static int[] EncodeBoard(string[,] board)
     {
         int[] boardState = new int[8];
 
@@ -183,7 +193,8 @@ public class Game
     }
 
     /// <summary>
-    ///     Checks if a position is checkmate by checking if the current player has any moves left.
+    ///     Checks if a position is checkmate by checking if the current player
+    ///     has any moves left.
     /// </summary>
     /// <returns>If checkmate has been reached</returns>
     private bool IsCheckmate()
@@ -191,7 +202,8 @@ public class Game
         for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++)
         {
-            if (Board[i, j] == "" || !IsCurrentPlayerColour(Board[i, j])) continue;
+            if (Board[i, j] == "" || !IsCurrentPlayerColour(Board[i, j]))
+                continue;
             if (GetMoves((i, j)) is not null) return false;
         }
 
@@ -211,19 +223,26 @@ public class Game
     /// <summary>
     ///     Checks if the king is in check.
     /// </summary>
-    /// <param name="newPosition">The position the king is moving to (optional)</param>
-    /// <param name="oldPosition">The position the king is moving from (optional)</param>
+    /// <param name="newPosition">
+    ///     The position the king is moving to (optional)
+    /// </param>
+    /// <param name="oldPosition">
+    ///     The position the king is moving from (optional)
+    /// </param>
     /// <returns>If the king is in check</returns>
-    public bool IsKingInCheck((int x, int y)? newPosition = null, (int x, int y)? oldPosition = null)
+    public bool IsKingInCheck((int x, int y)? newPosition = null,
+        (int x, int y)? oldPosition = null)
     {
-        (int x, int y) kingPosition = IsWhiteTurn ? _whiteKingPosition : _blackKingPosition;
+        (int x, int y) kingPosition =
+            IsWhiteTurn ? _whiteKingPosition : _blackKingPosition;
         bool isMoving = newPosition is not null && oldPosition is not null;
         string oldPositionPiece = "";
         string newPositionPiece = "";
 
         if (isMoving)
         {
-            // Move the king and store the piece (or lack of) at the new and old positions
+            // Move the king and store the piece (or lack of) at the new and old
+            // positions
             oldPositionPiece = Board[oldPosition!.Value.x, oldPosition.Value.y];
             newPositionPiece = Board[newPosition!.Value.x, newPosition.Value.y];
             Board[oldPosition.Value.x, oldPosition.Value.y] = "";
@@ -233,9 +252,10 @@ public class Game
         }
 
         LinkedList.LinkedList<(int, int)>? moves = new();
-        // Get all the moves the king can make as other pieces where the king 'as' a piece
-        // is moving to a square with that piece.
-        moves += GetOnlyCertainPiece(GetMovesPawn(kingPosition, true), 'P') ?? new LinkedList.LinkedList<(int, int)>();
+        // Get all the moves the king can make as other pieces where the king
+        // 'as' a piece is moving to a square with that piece.
+        moves += GetOnlyCertainPiece(GetMovesPawn(kingPosition, true), 'P') ??
+                 new LinkedList.LinkedList<(int, int)>();
         moves = (moves ?? new LinkedList.LinkedList<(int, int)>()) +
                 (GetOnlyCertainPiece(GetMovesKnight(kingPosition, true), 'N') ??
                  new LinkedList.LinkedList<(int, int)>());
@@ -243,7 +263,8 @@ public class Game
                 (GetOnlyCertainPiece(GetMovesBishop(kingPosition, true), 'B') ??
                  new LinkedList.LinkedList<(int, int)>());
         moves = (moves ?? new LinkedList.LinkedList<(int, int)>()) +
-                (GetOnlyCertainPiece(GetMovesRook(kingPosition, true), 'R') ?? new LinkedList.LinkedList<(int, int)>());
+                (GetOnlyCertainPiece(GetMovesRook(kingPosition, true), 'R') ??
+                 new LinkedList.LinkedList<(int, int)>());
         moves = (moves ?? new LinkedList.LinkedList<(int, int)>()) +
                 (GetOnlyCertainPiece(GetMovesQueen(kingPosition, true), 'Q') ??
                  new LinkedList.LinkedList<(int, int)>());
@@ -260,8 +281,10 @@ public class Game
         Node<(int, int)>? node = moves.Head;
         while (node is not null)
         {
-            // If the king ('as' another piece) can move to a square with a piece of the opposite colour
-            if (!IsCurrentPlayerColour(Board[node.Data.Item1, node.Data.Item2])) return true;
+            // If the king ('as' another piece) can move to a square with a
+            // piece of the opposite colour
+            if (!IsCurrentPlayerColour(Board[node.Data.Item1, node.Data.Item2]))
+                return true;
 
             node = node.NextNode;
         }
@@ -270,12 +293,14 @@ public class Game
     }
 
     /// <summary>
-    ///     Search through a list of moves and return only those which move to a square with a certain piece.
+    ///     Search through a list of moves and return only those which move to a
+    ///     square with a certain piece.
     /// </summary>
     /// <param name="moves">The list of moves to be searched</param>
     /// <param name="piece">The certain piece</param>
     /// <returns>The filtered list of moves</returns>
-    private LinkedList.LinkedList<(int, int)>? GetOnlyCertainPiece(LinkedList.LinkedList<(int, int)>? moves, char piece)
+    private LinkedList.LinkedList<(int, int)>? GetOnlyCertainPiece(
+        LinkedList.LinkedList<(int, int)>? moves, char piece)
     {
         LinkedList.LinkedList<(int, int)> newMoves = new();
 
@@ -285,7 +310,8 @@ public class Game
         while (node is not null)
         {
             // If the square the king is moving is occupied by the certain piece
-            if (Board[node.Data.Item1, node.Data.Item2][1] == piece) newMoves.AddNode(node.Data);
+            if (Board[node.Data.Item1, node.Data.Item2][1] == piece)
+                newMoves.AddNode(node.Data);
 
             node = node.NextNode;
         }
@@ -311,7 +337,8 @@ public class Game
     }
 
     /// <summary>
-    ///     Update the attribute storing the position of the king to the new position.
+    ///     Update the attribute storing the position of the king to the new
+    ///     position.
     /// </summary>
     /// <param name="position">The position the king is moving to</param>
     private void UpdateKingPosition((int x, int y) position)
@@ -325,22 +352,30 @@ public class Game
     /// <summary>
     ///     Checks if a pawn is taking another pawn en passant
     /// </summary>
-    /// <param name="oldPosition">The position the pawn that is moving is/was at</param>
-    /// <param name="newPosition">The position the pawn that is moving to</param>
+    /// <param name="oldPosition">
+    ///     The position the pawn that is moving is/was
+    /// </param>
+    /// <param name="newPosition">
+    ///     The position the pawn that is moving to
+    /// </param>
     /// <returns>Whether a pawn is taking another pawn en passant</returns>
-    private bool IsTakingEnPassant((int x, int y) oldPosition, (int x, int y) newPosition)
+    private bool IsTakingEnPassant((int x, int y) oldPosition,
+        (int x, int y) newPosition)
     {
-        // If moving one square left/right and one square up/down
-        // and the square being moved to is not empty (to prevent an index error for the next check)
+        // If moving one square left/right
+        // and one square up/down
+        // and the square being moved to is not empty (to prevent an index error
+        // for the next check)
         // and the piece being moved to is a pawn
         // and the piece being moved to is of the opposite colour
         // and the piece being moved to can be taken en passant
-        return Math.Abs(oldPosition.x - newPosition.x) == 1 && Math.Abs(oldPosition.y - newPosition.y) == 1
-                                                            && Board[oldPosition.x, newPosition.y] != "" &&
-                                                            Board[oldPosition.x, newPosition.y][1] == 'P'
-                                                            && !IsCurrentPlayerColour(Board[oldPosition.x,
-                                                                newPosition.y])
-                                                            && Board[oldPosition.x, newPosition.y][2] == '1';
+        return Math.Abs(oldPosition.x - newPosition.x) == 1 &&
+               Math.Abs(oldPosition.y - newPosition.y) == 1
+               && Board[oldPosition.x, newPosition.y] != "" &&
+               Board[oldPosition.x, newPosition.y][1] == 'P'
+               && !IsCurrentPlayerColour(Board[oldPosition.x,
+                   newPosition.y])
+               && Board[oldPosition.x, newPosition.y][2] == '1';
     }
 
     /// <summary>
@@ -349,9 +384,11 @@ public class Game
     /// <param name="oldPosition">The position the piece is moving from</param>
     /// <param name="newPosition">The position the piece is moving to</param>
     /// <returns>If the pawn has reached the opposite end</returns>
-    public bool IsPromotingMove((int x, int y) oldPosition, (int x, int y) newPosition)
+    public bool IsPromotingMove((int x, int y) oldPosition,
+        (int x, int y) newPosition)
     {
-        return Board[oldPosition.x, oldPosition.y][1] == 'P' && ReachedOppositeEnd(newPosition);
+        return Board[oldPosition.x, oldPosition.y][1] == 'P' &&
+               ReachedOppositeEnd(newPosition);
     }
 
     /// <summary>
@@ -361,7 +398,8 @@ public class Game
     /// <returns>If the piece has reached the opposite end</returns>
     private bool ReachedOppositeEnd((int x, int y) position)
     {
-        return (IsWhiteTurn && position.x == 7) || (!IsWhiteTurn && position.x == 0);
+        return (IsWhiteTurn && position.x == 7) ||
+               (!IsWhiteTurn && position.x == 0);
     }
 
     /// <summary>
@@ -369,8 +407,11 @@ public class Game
     /// </summary>
     /// <param name="oldPosition">The position the piece is currently at</param>
     /// <param name="newPosition">The position the piece is to move to</param>
-    /// <param name="promotion">The piece the pawn is promoting into (optional)</param>
-    public void MovePiece((int x, int y) oldPosition, (int x, int y) newPosition, char? promotion = null)
+    /// <param name="promotion">
+    ///     The piece the pawn is promoting into (optional)
+    /// </param>
+    public void MovePiece((int x, int y) oldPosition,
+        (int x, int y) newPosition, char? promotion = null)
     {
         LastMove = (oldPosition, newPosition);
 
@@ -379,17 +420,23 @@ public class Game
             _movesSincePawnOrCapture = -1;
             // If moving en passant
             if (Math.Abs(oldPosition.x - newPosition.x) == 2)
-                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '1';
+                Board[oldPosition.x, oldPosition.y] =
+                    Board[oldPosition.x, oldPosition.y][..2] + '1';
             else
-                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '2';
+                Board[oldPosition.x, oldPosition.y] =
+                    Board[oldPosition.x, oldPosition.y][..2] + '2';
 
             // Remove piece captures en passant
-            if (IsTakingEnPassant(oldPosition, newPosition)) Board[oldPosition.x, newPosition.y] = "";
+            if (IsTakingEnPassant(oldPosition, newPosition))
+                Board[oldPosition.x, newPosition.y] = "";
 
             if (ReachedOppositeEnd(newPosition))
             {
-                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..1] + promotion;
-                if (promotion == 'R') Board[oldPosition.x, oldPosition.y] += '1'; // Prevent castling with promoted rook
+                Board[oldPosition.x, oldPosition.y] =
+                    Board[oldPosition.x, oldPosition.y][..1] + promotion;
+                if (promotion == 'R')
+                    Board[oldPosition.x, oldPosition.y] +=
+                        '1'; // Prevent castling with promoted rook
             }
         }
 
@@ -397,16 +444,19 @@ public class Game
         switch (Board[oldPosition.x, oldPosition.y][1])
         {
             case 'K':
-                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '1';
+                Board[oldPosition.x, oldPosition.y] =
+                    Board[oldPosition.x, oldPosition.y][..2] + '1';
                 UpdateKingPosition(newPosition);
                 break;
             case 'R':
-                Board[oldPosition.x, oldPosition.y] = Board[oldPosition.x, oldPosition.y][..2] + '1';
+                Board[oldPosition.x, oldPosition.y] =
+                    Board[oldPosition.x, oldPosition.y][..2] + '1';
                 break;
         }
 
         // If castling
-        if (Board[oldPosition.x, oldPosition.y][1] == 'K' && Math.Abs(oldPosition.y - newPosition.y) > 1)
+        if (Board[oldPosition.x, oldPosition.y][1] == 'K' &&
+            Math.Abs(oldPosition.y - newPosition.y) > 1)
         {
             // If castling left or right
             if (newPosition.y == 2)
@@ -422,23 +472,28 @@ public class Game
         }
 
         // If capturing
-        if (Board[newPosition.x, newPosition.y] != "") _movesSincePawnOrCapture = -1;
+        if (Board[newPosition.x, newPosition.y] != "")
+            _movesSincePawnOrCapture = -1;
 
-        Board[newPosition.x, newPosition.y] = Board[oldPosition.x, oldPosition.y];
+        Board[newPosition.x, newPosition.y] =
+            Board[oldPosition.x, oldPosition.y];
         Board[oldPosition.x, oldPosition.y] = "";
         IsWhiteTurn = !IsWhiteTurn;
 
         // Update en passant counters for all pawns
         for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++)
-            if (Board[i, j] != "" && Board[i, j][1] == 'P' && !(i == newPosition.x && j == newPosition.y))
+            if (Board[i, j] != "" && Board[i, j][1] == 'P' &&
+                !(i == newPosition.x && j == newPosition.y))
                 Board[i, j] = ChangeEnPassant(Board[i, j]);
 
         if (IsWhiteTurn) _movesSincePawnOrCapture++;
 
         if (IsCheckmate())
         {
-            Score = IsWhiteTurn ? -(int)Constants.Infinity : (int)Constants.Infinity;
+            Score = IsWhiteTurn
+                ? -(int)Constants.Infinity
+                : (int)Constants.Infinity;
             IsFinished = true;
         }
         else if (_movesSincePawnOrCapture == 50)
@@ -453,7 +508,9 @@ public class Game
     /// <summary>
     ///     Returns a list of possible moves a piece can make
     /// </summary>
-    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
+    /// <param name="position">
+    ///     Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)
+    /// </param>
     /// <returns>A list of possible moves</returns>
     public LinkedList.LinkedList<(int, int)>? GetMoves((int x, int y) position)
     {
@@ -461,16 +518,18 @@ public class Game
 
         if (!IsCurrentPlayerColour(Board[position.x, position.y])) return null;
 
-        LinkedList.LinkedList<(int, int)>? moves = Board[position.x, position.y][1] switch
-        {
-            'P' => GetMovesPawn(position),
-            'N' => GetMovesKnight(position),
-            'B' => GetMovesBishop(position),
-            'R' => GetMovesRook(position),
-            'Q' => GetMovesQueen(position),
-            'K' => GetMovesKing(position),
-            _ => throw new ArgumentException($"Unknown piece type at {position}.")
-        };
+        LinkedList.LinkedList<(int, int)>? moves =
+            Board[position.x, position.y][1] switch
+            {
+                'P' => GetMovesPawn(position),
+                'N' => GetMovesKnight(position),
+                'B' => GetMovesBishop(position),
+                'R' => GetMovesRook(position),
+                'Q' => GetMovesQueen(position),
+                'K' => GetMovesKing(position),
+                _ => throw new ArgumentException(
+                    $"Unknown piece type at {position}.")
+            };
 
         if (moves is null) return null;
 
@@ -489,10 +548,15 @@ public class Game
     /// <summary>
     ///     Returns a list of possible moves a pawn can make
     /// </summary>
-    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
-    /// <param name="checkingCheck">If the moves are being fetched to check for a check</param>
+    /// <param name="position">
+    ///     Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)
+    /// </param>
+    /// <param name="checkingCheck">
+    ///     If the moves are being fetched to check for a check
+    /// </param>
     /// <returns>A list of possible moves</returns>
-    private LinkedList.LinkedList<(int, int)>? GetMovesPawn((int x, int y) position, bool checkingCheck = false)
+    private LinkedList.LinkedList<(int, int)>? GetMovesPawn(
+        (int x, int y) position, bool checkingCheck = false)
     {
         LinkedList.LinkedList<(int, int)> moves = new();
         int multiplier = IsWhiteTurn ? 1 : -1;
@@ -514,10 +578,13 @@ public class Game
         for (int i = -1; i < 2; i += 2)
         {
             if ((position.y + i < 0) | (position.y + i > 7)) continue;
-            if ((position.x + multiplier < 0) | (position.x + multiplier > 7)) continue;
-            // If square to the left/right and up 1 is not empty AND is of opposite colour to the current player
+            if ((position.x + multiplier < 0) | (position.x + multiplier > 7))
+                continue;
+            // If square to the left/right and up 1 is not empty AND is of
+            // opposite colour to the current player
             if (Board[position.x + multiplier, position.y + i] != "" &&
-                !IsCurrentPlayerColour(Board[position.x + multiplier, position.y + i]))
+                !IsCurrentPlayerColour(Board[position.x + multiplier,
+                    position.y + i]))
                 moves.AddNode((position.x + multiplier, position.y + i));
         }
 
@@ -526,10 +593,13 @@ public class Game
         {
             if ((position.y + i < 0) | (position.y + i > 7)) continue;
 
-            // If there is not a pawn next to the pawn we are getting the moves for
-            if (Board[position.x, position.y + i] == "" || Board[position.x, position.y + i][1] != 'P') continue;
+            // If there is not a pawn next to the pawn we are getting the moves
+            // for
+            if (Board[position.x, position.y + i] == "" ||
+                Board[position.x, position.y + i][1] != 'P') continue;
             // If same colour
-            if (IsCurrentPlayerColour(Board[position.x, position.y + i])) continue;
+            if (IsCurrentPlayerColour(Board[position.x, position.y + i]))
+                continue;
             // If it cannot be taken en passant
             if (Board[position.x, position.y + i][2] != '1') continue;
             moves.AddNode((position.x + multiplier, position.y + i));
@@ -541,24 +611,31 @@ public class Game
     /// <summary>
     ///     Returns a list of possible moves a knight can make
     /// </summary>
-    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
-    /// <param name="checkingCheck">If checking moves to determine if king is in check</param>
+    /// <param name="position">
+    ///     Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)
+    /// </param>
+    /// <param name="checkingCheck">
+    ///     If checking moves to determine if king is in check
+    /// </param>
     /// <returns>A list of possible moves</returns>
-    private LinkedList.LinkedList<(int, int)>? GetMovesKnight((int x, int y) position, bool checkingCheck = false)
+    private LinkedList.LinkedList<(int, int)>? GetMovesKnight(
+        (int x, int y) position, bool checkingCheck = false)
     {
         LinkedList.LinkedList<(int x, int y)> moves = new();
 
-        // Checks all 8 possibilities of (±2, ±1) and (±1, ±2)
+        // Checks all 8 possibilities of (+-2, +-1) and (+-1, +-2)
         for (int i = 1; i < 3; i++)
         for (int j = -1; j < 2; j += 2)
         for (int k = -1; k < 2; k += 2)
         {
             if ((position.x + j * i < 0) | (position.x + j * i > 7)) continue;
 
-            if ((position.y + k * (3 - i) < 0) | (position.y + k * (3 - i) > 7)) continue;
+            if ((position.y + k * (3 - i) < 0) | (position.y + k * (3 - i) > 7))
+                continue;
             if (Board[position.x + j * i, position.y + k * (3 - i)] != "")
             {
-                if (IsCurrentPlayerColour(Board[position.x + j * i, position.y + k * (3 - i)])) continue;
+                if (IsCurrentPlayerColour(Board[position.x + j * i,
+                        position.y + k * (3 - i)])) continue;
                 moves.AddNode((position.x + j * i, position.y + k * (3 - i)));
             }
             else if (!checkingCheck)
@@ -573,10 +650,15 @@ public class Game
     /// <summary>
     ///     Returns a list of possible moves a bishop can make
     /// </summary>
-    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
-    /// <param name="checkingCheck">If checking moves to determine if king is in check</param>
+    /// <param name="position">
+    ///     Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)
+    /// </param>
+    /// <param name="checkingCheck">
+    ///     If checking moves to determine if king is in check
+    /// </param>
     /// <returns>A list of possible moves</returns>
-    private LinkedList.LinkedList<(int, int)>? GetMovesBishop((int x, int y) position, bool checkingCheck = false)
+    private LinkedList.LinkedList<(int, int)>? GetMovesBishop(
+        (int x, int y) position, bool checkingCheck = false)
     {
         // Trailing is the / line, leading is the \ line.
         int trailingDiagonalLeftMax = Math.Min(position.x, position.y);
@@ -584,22 +666,23 @@ public class Game
         int leadingDiagonalLeftMax = Math.Min(7 - position.x, position.y);
         int leadingDiagonalRightMax = Math.Min(position.x, 7 - position.y);
 
-        LinkedList.LinkedList<(int x, int y)> trailingMoves = GetMovesBishopLine(
-            position,
-            trailingDiagonalLeftMax,
-            trailingDiagonalRightMax,
-            false,
-            checkingCheck
-        );
+        LinkedList.LinkedList<(int x, int y)> trailingMoves =
+            GetMovesBishopLine(
+                position,
+                trailingDiagonalLeftMax,
+                trailingDiagonalRightMax,
+                false,
+                checkingCheck
+            );
 
-        LinkedList.LinkedList<(int x, int y)> leadingMoves = GetMovesBishopLine(
-            position,
-            leadingDiagonalLeftMax,
-            leadingDiagonalRightMax,
-            true,
-            checkingCheck
-        );
-
+        LinkedList.LinkedList<(int x, int y)> leadingMoves =
+            GetMovesBishopLine(
+                position,
+                leadingDiagonalLeftMax,
+                leadingDiagonalRightMax,
+                true,
+                checkingCheck
+            );
 
         return trailingMoves + leadingMoves;
     }
@@ -607,19 +690,33 @@ public class Game
     /// <summary>
     ///     Returns a list of possible moves a bishop can make on a diagonal
     /// </summary>
-    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
-    /// <param name="left">The furthest number of units left the bishop can go</param>
-    /// <param name="right">The furthest number of units right the bishop can go</param>
-    /// <param name="isLeading">If the diagonal to be checked is the leading diagonal or not (trailing).</param>
-    /// <param name="checkingCheck">If checking moves to determine if king is in check</param>
+    /// <param name="position">
+    ///     Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)
+    /// </param>
+    /// <param name="left">
+    ///     The furthest number of units left the bishop can go
+    /// </param>
+    /// <param name="right">
+    ///     The furthest number of units right the bishop can go
+    /// </param>
+    /// <param name="isLeading">
+    ///     If the diagonal to be checked is the leading diagonal or not
+    ///     (trailing).
+    /// </param>
+    /// <param name="checkingCheck">
+    ///     If checking moves to determine if king is in check
+    /// </param>
     /// <returns>A list of possible moves</returns>
-    private LinkedList.LinkedList<(int, int)> GetMovesBishopLine((int x, int y) position, int left, int right,
+    private LinkedList.LinkedList<(int, int)> GetMovesBishopLine(
+        (int x, int y) position, int left, int right,
         bool isLeading,
         bool checkingCheck)
     {
         int xMultiplier = isLeading ? 1 : -1;
-        return GetMovesBishopHalfLine(position, left, xMultiplier, true, checkingCheck) +
-               GetMovesBishopHalfLine(position, right, xMultiplier, false, checkingCheck)
+        return GetMovesBishopHalfLine(position, left, xMultiplier, true,
+                   checkingCheck) +
+               GetMovesBishopHalfLine(position, right, xMultiplier, false,
+                   checkingCheck)
                ?? new LinkedList.LinkedList<(int, int)>();
     }
 
@@ -630,9 +727,12 @@ public class Game
     /// <param name="max">The furthest distance the bishop can travel</param>
     /// <param name="xMultiplier">The multiplier for the x direction</param>
     /// <param name="isLeft">Whether the half line is to the left</param>
-    /// <param name="checkingCheck">If checking moves to determine if king is in check</param>
-    /// <returns></returns>
-    private LinkedList.LinkedList<(int, int)> GetMovesBishopHalfLine((int x, int y) position, int max, int xMultiplier,
+    /// <param name="checkingCheck">
+    ///     If checking moves to determine if king is in check
+    /// </param>
+    /// <returns>The possible moves for the half of the diagonal</returns>
+    private LinkedList.LinkedList<(int, int)> GetMovesBishopHalfLine(
+        (int x, int y) position, int max, int xMultiplier,
         bool isLeft, bool checkingCheck)
     {
         int directionMultiplier = isLeft ? 1 : -1;
@@ -663,10 +763,15 @@ public class Game
     /// <summary>
     ///     Returns a list of possible moves a rook can make
     /// </summary>
-    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
-    /// <param name="checkingCheck">If checking moves to determine if king is in check</param>
+    /// <param name="position">
+    ///     Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)
+    /// </param>
+    /// <param name="checkingCheck">
+    ///     If checking moves to determine if king is in check
+    /// </param>
     /// <returns>A list of possible moves</returns>
-    private LinkedList.LinkedList<(int, int)>? GetMovesRook((int x, int y) position, bool checkingCheck = false)
+    private LinkedList.LinkedList<(int, int)>? GetMovesRook(
+        (int x, int y) position, bool checkingCheck = false)
     {
         int verticalDownMax = 7 - position.x;
         int verticalUpMax = position.x;
@@ -674,12 +779,16 @@ public class Game
         int horizontalLeftMax = position.y;
 
         LinkedList.LinkedList<(int, int)>? moves =
-            GetMovesRookHalfLine(position, verticalUpMax, true, false, checkingCheck);
-        moves += GetMovesRookHalfLine(position, verticalDownMax, true, true, checkingCheck);
+            GetMovesRookHalfLine(position, verticalUpMax, true, false,
+                checkingCheck);
+        moves += GetMovesRookHalfLine(position, verticalDownMax, true, true,
+            checkingCheck);
         moves = (moves ?? new LinkedList.LinkedList<(int, int)>()) +
-                GetMovesRookHalfLine(position, horizontalLeftMax, false, false, checkingCheck);
+                GetMovesRookHalfLine(position, horizontalLeftMax, false, false,
+                    checkingCheck);
         moves = (moves ?? new LinkedList.LinkedList<(int, int)>()) +
-                GetMovesRookHalfLine(position, horizontalRightMax, false, true, checkingCheck);
+                GetMovesRookHalfLine(position, horizontalRightMax, false, true,
+                    checkingCheck);
 
         return moves;
     }
@@ -690,10 +799,15 @@ public class Game
     /// <param name="position">Coordinates of the current piece</param>
     /// <param name="max">The furthest distance the rook can travel</param>
     /// <param name="isX">Whether the line to check is in the x</param>
-    /// <param name="isPositive">Whether the half of the line to check is in the positive or negative</param>
-    /// <param name="checkingCheck">If checking moves to determine if king is in check</param>
-    /// <returns></returns>
-    private LinkedList.LinkedList<(int, int)> GetMovesRookHalfLine((int x, int y) position, int max,
+    /// <param name="isPositive">
+    ///     Whether the half of the line to check is in the positive or negative
+    /// </param>
+    /// <param name="checkingCheck">
+    ///     If checking moves to determine if king is in check
+    /// </param>
+    /// <returns>A list of possible moves for the half of the line</returns>
+    private LinkedList.LinkedList<(int, int)> GetMovesRookHalfLine(
+        (int x, int y) position, int max,
         bool isX, bool isPositive, bool checkingCheck)
     {
         LinkedList.LinkedList<(int, int)> moves = new();
@@ -701,8 +815,10 @@ public class Game
 
         for (int i = 1; i <= max && !isCollision; i++)
         {
-            int posX = isX ? position.x + i * (isPositive ? 1 : -1) : position.x;
-            int posY = isX ? position.y : position.y + i * (isPositive ? 1 : -1);
+            int posX =
+                isX ? position.x + i * (isPositive ? 1 : -1) : position.x;
+            int posY =
+                isX ? position.y : position.y + i * (isPositive ? 1 : -1);
 
             if (Board[posX, posY] == "")
             {
@@ -722,23 +838,34 @@ public class Game
     /// <summary>
     ///     Returns a list of possible moves a queen can make
     /// </summary>
-    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
-    /// <param name="checkingCheck">If checking moves to determine if king is in check</param>
+    /// <param name="position">
+    ///     Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)
+    /// </param>
+    /// <param name="checkingCheck">
+    ///     If checking moves to determine if king is in check
+    /// </param>
     /// <returns>A list of possible moves</returns>
-    private LinkedList.LinkedList<(int, int)>? GetMovesQueen((int x, int y) position, bool checkingCheck = false)
+    private LinkedList.LinkedList<(int, int)>? GetMovesQueen(
+        (int x, int y) position, bool checkingCheck = false)
     {
-        return (GetMovesBishop(position, checkingCheck) ?? new LinkedList.LinkedList<(int, int)>()) +
-               (GetMovesRook(position, checkingCheck) ?? new LinkedList.LinkedList<(int, int)>());
+        return (GetMovesBishop(position, checkingCheck) ??
+                new LinkedList.LinkedList<(int, int)>()) +
+               (GetMovesRook(position, checkingCheck) ??
+                new LinkedList.LinkedList<(int, int)>());
     }
 
     /// <summary>
     ///     Returns a list of possible moves a king can make
     /// </summary>
-    /// <param name="position">Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)</param>
+    /// <param name="position">
+    ///     Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)
+    /// </param>
     /// <returns>A list of possible moves</returns>
-    private LinkedList.LinkedList<(int, int)>? GetMovesKing((int x, int y) position)
+    private LinkedList.LinkedList<(int, int)>? GetMovesKing(
+        (int x, int y) position)
     {
-        (int, int) kingPosition = IsWhiteTurn ? _whiteKingPosition : _blackKingPosition;
+        (int, int) kingPosition =
+            IsWhiteTurn ? _whiteKingPosition : _blackKingPosition;
         LinkedList.LinkedList<(int x, int y)> moves = new();
 
         for (int i = -1; i <= 1; i++)
@@ -757,20 +884,27 @@ public class Game
         }
 
         // Castling
-        if (Board[position.x, position.y][2] != '0') return moves.Head is null ? null : moves;
-        // If rook hasn't moved and there is no piece between the king and the rook
+        if (Board[position.x, position.y][2] != '0')
+            return moves.Head is null ? null : moves;
+        // If rook hasn't moved and there is no piece between the king and the
+        // rook
         if (Board[position.x, 0] != "" &&
             Board[position.x, 0][1..] == "R0" &&
-            Board[position.x, 1] == "" && !IsKingInCheck((position.x, 1), kingPosition) &&
-            Board[position.x, 2] == "" && !IsKingInCheck((position.x, 2), kingPosition) &&
-            Board[position.x, 3] == "" && !IsKingInCheck((position.x, 3), kingPosition)
+            Board[position.x, 1] == "" &&
+            !IsKingInCheck((position.x, 1), kingPosition) &&
+            Board[position.x, 2] == "" &&
+            !IsKingInCheck((position.x, 2), kingPosition) &&
+            Board[position.x, 3] == "" &&
+            !IsKingInCheck((position.x, 3), kingPosition)
            )
             moves.AddNode((position.x, 2));
 
         if (Board[position.x, 7] != "" &&
             Board[position.x, 7][1..] == "R0" &&
-            Board[position.x, 5] == "" && !IsKingInCheck((position.x, 5), kingPosition) &&
-            Board[position.x, 6] == "" && !IsKingInCheck((position.x, 6), kingPosition)
+            Board[position.x, 5] == "" &&
+            !IsKingInCheck((position.x, 5), kingPosition) &&
+            Board[position.x, 6] == "" &&
+            !IsKingInCheck((position.x, 6), kingPosition)
            )
             moves.AddNode((position.x, 6));
 

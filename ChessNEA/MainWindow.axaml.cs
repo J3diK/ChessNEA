@@ -15,7 +15,10 @@ public partial class MainWindow : Window
 {
     private static bool _isPlayerWhite = true;
     private static int _maxDepthPly = 4;
-    private readonly SolidColorBrush _background = new(Color.FromArgb(50, 0, 0, 0));
+
+    private readonly SolidColorBrush _background =
+        new(Color.FromArgb(50, 0, 0, 0));
+
     private Bot _bot = new(_maxDepthPly);
     private Game _game = new(_isPlayerWhite);
     private bool _isWhiteOnBottom = true;
@@ -65,9 +68,11 @@ public partial class MainWindow : Window
                 CommandParameter = (x, y)
             };
             if (moves is not null && moves.Contains((x, y)))
-                button.Click += (_, _) => MovePiecePlayer(((int x, int y))button.CommandParameter);
+                button.Click += (_, _) =>
+                    MovePiecePlayer(((int x, int y))button.CommandParameter);
             else
-                button.Click += (_, _) => GetMoves(((int x, int y))button.CommandParameter);
+                button.Click += (_, _) =>
+                    GetMoves(((int x, int y))button.CommandParameter);
             BoardGrid.Children.Add(button);
             DisplayMovesGrid.Children.Add(new TextBlock
             {
@@ -111,23 +116,31 @@ public partial class MainWindow : Window
 
         if (_game.IsFinished) return;
 
-        await Dispatcher.UIThread.InvokeAsync(() => { BlockInput.IsVisible = true; });
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            BlockInput.IsVisible = true;
+        });
 
         MovePieceBot();
     }
 
     private async void MovePieceBot()
     {
-        ((int oldX, int oldY) moveOld, (int newX, int newY) moveNew, char? promotionPiece) = await _bot.GetMove(_game);
+        ((int oldX, int oldY) moveOld, (int newX, int newY) moveNew,
+            char? promotionPiece) = await _bot.GetMove(_game);
         _selectedPiece = moveOld;
         MovePiece(moveNew, promotionPiece);
 
-        await Dispatcher.UIThread.InvokeAsync(() => { BlockInput.IsVisible = false; });
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            BlockInput.IsVisible = false;
+        });
     }
 
     private void MovePiece((int x, int y) position, char? promotionPiece = null)
     {
-        if (_game.Board[position.x, position.y] != "") AddCapture(_game.Board[position.x, position.y]);
+        if (_game.Board[position.x, position.y] != "")
+            AddCapture(_game.Board[position.x, position.y]);
 
         if (promotionPiece is not null)
             _game.MovePiece(_selectedPiece, position, promotionPiece);
@@ -141,7 +154,8 @@ public partial class MainWindow : Window
 
     private void AddCapture(string piece)
     {
-        if ((piece[0] == 'w' && !_isWhiteOnBottom) || (piece[0] == 'b' && _isWhiteOnBottom))
+        if ((piece[0] == 'w' && !_isWhiteOnBottom) ||
+            (piece[0] == 'b' && _isWhiteOnBottom))
             BottomPlayer.Text += GetSymbol(piece);
         else
             TopPlayer.Text += GetSymbol(piece);
@@ -202,7 +216,9 @@ public partial class MainWindow : Window
 
     private void ClickButtonResign(object? sender, RoutedEventArgs e)
     {
-        _game.Score = _isPlayerWhite ? -(int)Constants.Infinity : (int)Constants.Infinity;
+        _game.Score = _isPlayerWhite
+            ? -(int)Constants.Infinity
+            : (int)Constants.Infinity;
         DisplayGameEnd();
     }
 
