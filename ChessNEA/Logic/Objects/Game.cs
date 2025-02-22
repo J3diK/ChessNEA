@@ -267,6 +267,9 @@ public class Game
         moves = (moves ?? new LinkedList.LinkedList<(int, int)>()) +
                 (GetOnlyCertainPiece(GetMovesQueen(kingPosition, true), 'Q') ??
                  new LinkedList.LinkedList<(int, int)>());
+        moves = (moves ?? new LinkedList.LinkedList<(int, int)>()) +
+                (GetOnlyCertainPiece(GetMovesKing(kingPosition, true), 'K') ??
+                 new LinkedList.LinkedList<(int, int)>());
 
         // Revert board to original state
         if (isMoving)
@@ -309,7 +312,8 @@ public class Game
         while (node is not null)
         {
             // If the square the king is moving is occupied by the certain piece
-            if (Board[node.Data.Item1, node.Data.Item2][1] == piece)
+            if (Board[node.Data.Item1, node.Data.Item2] != "" &&
+                Board[node.Data.Item1, node.Data.Item2][1] == piece)
                 newMoves.AddNode(node.Data);
 
             node = node.NextNode;
@@ -879,9 +883,10 @@ public class Game
     /// <param name="position">
     ///     Coordinates of the current piece from (0,0) to (7,7) (A1 to H8)
     /// </param>
+    /// <param name="checkingCheck">For if checking for check</param>
     /// <returns>A list of possible moves</returns>
     private LinkedList.LinkedList<(int, int)>? GetMovesKing(
-        (int x, int y) position)
+        (int x, int y) position, bool checkingCheck = false)
     {
         (int, int) kingPosition =
             IsWhiteTurn ? _whiteKingPosition : _blackKingPosition;
@@ -894,8 +899,7 @@ public class Game
 
             if ((position.x + i < 0) | (position.x + i > 7) |
                 (position.y + j < 0) | (position.y + j > 7)) continue;
-
-            // TODO: IF SOMETHING BREAKS WITH KING LOOK HERE
+            
             // If opposite colour OR empty
             if (Board[position.x + i, position.y + j] == "" ||
                 !IsCurrentPlayerColour(Board[position.x + i, position.y + j]))
@@ -903,7 +907,7 @@ public class Game
         }
 
         // Castling
-        if (Board[position.x, position.y][2] != '0')
+        if (checkingCheck || Board[position.x, position.y][2] != '0')
             return moves.Head is null ? null : moves;
         // If rook hasn't moved and there is no piece between the king and the
         // rook

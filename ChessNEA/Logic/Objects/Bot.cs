@@ -538,6 +538,7 @@ public class Bot(int maxDepthPly, bool isWhite = false)
         LinkedList.LinkedList<((int x, int y), (int x, int y))> childGames =
             GetChildGames(game, colour);
         if (childGames.Head is null) return standPat;
+        childGames = MergeSort(game, colour, childGames);
 
         Node<((int x, int y), (int x, int y))>? currentNode = childGames.Head;
         while (currentNode != null)
