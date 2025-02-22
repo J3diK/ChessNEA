@@ -2,12 +2,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="1000"
+        mc:Ignorable="d" d:DesignWidth="1050" d:DesignHeight="1000"
         x:Class="ChessNEA.MainWindow"
         Title="ChessNEA"
         CanResize="False"
         Height="1000"
-        Width="1600">
+        Width="1050">
 
     <Grid ColumnDefinitions="900,  *">
         <Grid Grid.Column="0" RowDefinitions="100, *, 100">

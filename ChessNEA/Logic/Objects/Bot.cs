@@ -220,8 +220,10 @@ public class Bot(int maxDepthPly, bool isWhite = false)
     ///     positions.
     /// </summary>
     private ConcurrentDictionary<int[], (int, int, ((int oldX, int oldY), (int
-            newX, int newY)))>
+            newX, int newY)), char?)>
         _transpositionTable = new(new IntArrayComparer());
+
+    private int _maxDepthPly = maxDepthPly;
 
     private bool IsWhite { get; } = isWhite;
 
@@ -318,7 +320,15 @@ public class Bot(int maxDepthPly, bool isWhite = false)
             !OpeningsBook.ContainsKey(
                 (_openingMoves + " " + EncodeMove(game.LastMove)).Trim()))
         {
-            if (!_inEndgame) _inEndgame = IsEndgame(game);
+            if (!_inEndgame)
+            {
+                _inEndgame = IsEndgame(game);
+                // Prevent 'stuck' pawns
+                if (_inEndgame)
+                {
+                    _maxDepthPly = Math.Max(_maxDepthPly, 3);
+                }
+            }
             _inOpeningBook = false;
             return FindBestMove(game, IsWhite ? 1 : -1,
                 Environment.ProcessorCount);
@@ -402,7 +412,7 @@ public class Bot(int maxDepthPly, bool isWhite = false)
         // Clear the transposition table
         _transpositionTable =
             new ConcurrentDictionary<int[], (int, int, ((int oldX, int oldY), (
-                int newX, int newY)))>(
+                int newX, int newY)), char?)>(
                 new IntArrayComparer());
         
         return Task.FromResult((bestMove.Item1, bestMove.Item2,
@@ -423,7 +433,7 @@ public class Bot(int maxDepthPly, bool isWhite = false)
         const int beta = (int)Constants.Infinity;
 
         // Iterative deepening search
-        for (int depth = 1; depth <= maxDepthPly; depth++)
+        for (int depth = 1; depth <= _maxDepthPly; depth++)
         {
             (value, ((int oldX, int oldY), (int newX, int newY)) bestMove,
                 char? piece) = depth == 1
@@ -455,15 +465,17 @@ public class Bot(int maxDepthPly, bool isWhite = false)
     /// <summary>
     ///     Checks if a move is a quiet move. A quiet move is a move that does
     ///     not capture a piece or promote a pawn. Additionally, the move must
-    ///     not put a king in check.
+    ///     not put a king in check. Any endgame position is not considered
+    ///     quiet.
     /// </summary>
     /// <param name="game"></param>
     /// <param name="oldPos"></param>
     /// <param name="newPos"></param>
     /// <returns></returns>
-    private static bool IsQuiet(Game game, (int oldX, int oldY) oldPos,
+    private bool IsQuiet(Game game, (int oldX, int oldY) oldPos,
         (int newX, int newY) newPos)
     {
+        if (_inEndgame) return false;
         if (IsCapture(game, newPos)) return false;
         if (game.IsPromotingMove(oldPos, newPos)) return false;
 
@@ -548,15 +560,11 @@ public class Bot(int maxDepthPly, bool isWhite = false)
             if (game.IsPromotingMove(currentNode.Data.Item1,
                     currentNode.Data.Item2))
             {
-                foreach (string promotion in (string[]) ["Q", "R1", "B", "N"])
+                foreach (char promotion in (char[]) ['Q', 'R', 'B', 'N'])
                 {
                     Game copyGame = game.Copy();
-                    copyGame.Board[currentNode.Data.Item1.x,
-                            currentNode.Data.Item1.y] =
-                        copyGame.Board[currentNode.Data.Item1.x,
-                            currentNode.Data.Item1.y][0] + promotion;
                     alpha = QsAlphaBeta(copyGame, alpha, beta, colour,
-                        currentNode);
+                        currentNode, promotion);
                     if (alpha >= beta) return beta;
                 }
             }
@@ -580,13 +588,16 @@ public class Bot(int maxDepthPly, bool isWhite = false)
     /// <param name="beta">The beta value used in QS</param>
     /// <param name="colour">The colour of the player to move</param>
     /// <param name="currentNode">The move to make</param>
+    /// <param name="promotion">The piece to promote into (null if not)</param>
     /// <returns>An evaluation of the position after making the move</returns>
     private int QsAlphaBeta(Game game, int alpha, int beta, int colour,
-        Node<((int x, int y), (int x, int y))>? currentNode)
+        Node<((int x, int y), (int x, int y))>? currentNode,
+        char? promotion = null)
     {
         // Deep copy
         Game childGame = game.Copy();
-        childGame.MovePiece(currentNode!.Data.Item1, currentNode.Data.Item2);
+        childGame.MovePiece(currentNode!.Data.Item1, currentNode.Data.Item2,
+            promotion);
         int value = -QuiescenceSearch(childGame, -colour, -beta, -alpha);
         return value >= beta ? beta : Math.Max(alpha, value);
     }
@@ -640,11 +651,20 @@ public class Bot(int maxDepthPly, bool isWhite = false)
     {
         int[] hash = Game.EncodeBoard(game.Board);
         // If position already is in the transposition table and the depth is
-        // greater than the depth to search to, return the stored value.
+        // greater than the depth to search to,
         if (_transpositionTable.TryGetValue(hash,
-                out (int, int, ((int oldX, int oldY), (int newX, int newY)))
-                entry) && entry.Item2 > depth)
-            return (entry.Item1, entry.Item3, null);
+                out (int, int, ((int oldX, int oldY), (int newX, int newY)),
+                char?) entry) && entry.Item2 > depth)
+        {
+            Game copy = game.Copy();
+            copy.MovePiece(entry.Item3.Item1, entry.Item3.Item2, entry.Item4);
+            
+            // and the move will not result in
+            // a draw or loss (for the current side), return the stored value.
+            if (!copy.IsFinished ||
+                copy.Score * colour == (int)Constants.Infinity)
+                return (entry.Item1, entry.Item3, null);
+        }
 
         // Is terminal
         if (depth == 0)
@@ -686,25 +706,20 @@ public class Bot(int maxDepthPly, bool isWhite = false)
                     ? 1
                     : 0;
             bool moveChanged;
-            promotionPiece = null;
 
             if (game.IsPromotingMove(
                     (currentNode.Data.Item1.x, currentNode.Data.Item1.y),
                     (currentNode.Data.Item2.x, currentNode.Data.Item2.y)))
             {
-                foreach (string promotion in (string[]) ["Q", "R1", "B", "N"])
+                foreach (char promotion in (char[]) ['Q', 'R', 'B', 'N'])
                 {
                     Game childGame = game.Copy();
-                    childGame.Board[currentNode.Data.Item1.x,
-                            currentNode.Data.Item1.y] =
-                        childGame.Board[currentNode.Data.Item1.x,
-                            currentNode.Data.Item1.y][0] + promotion;
                     childGame.MovePiece(currentNode.Data.Item1,
-                        currentNode.Data.Item2);
+                        currentNode.Data.Item2, promotion);
                     (value, move, alpha, moveChanged) = NegamaxMain(childGame,
                         depth, colour, alpha, beta,
                         windowCentre, currentNode, value, extension, move);
-                    if (moveChanged) promotionPiece = promotion[0];
+                    if (moveChanged) promotionPiece = promotion;
                     if (alpha >= beta) break;
                 }
             }
@@ -725,7 +740,7 @@ public class Bot(int maxDepthPly, bool isWhite = false)
 
         // If not null
         if (!move.Equals(((-1, -1), (-1, -1))))
-            _transpositionTable[hash] = (value, depth, move);
+            _transpositionTable[hash] = (value, depth, move, promotionPiece);
 
         // Return the best move and the evaluation of the position
         // If alpha = -Infinity, then the position is a checkmate
@@ -833,13 +848,10 @@ public class Bot(int maxDepthPly, bool isWhite = false)
 
         int evaluation = -(int)Constants.Infinity;
         
-        foreach (string promotion in (string[]) ["Q", "R1", "B", "N"])
+        foreach (char promotion in (char[]) ['Q', 'R', 'B', 'N'])
         {
             Game childGame = game.Copy();
-            childGame.Board[move.Item1.oldX, move.Item1.oldY] =
-                childGame.Board[move.Item1.oldX, move.Item1.oldY][0] +
-                promotion;
-            childGame.MovePiece(move.Item1, move.Item2);
+            childGame.MovePiece(move.Item1, move.Item2, promotion);
             evaluation = Math.Max(Evaluate(childGame), evaluation);
         }
 

@@ -63,7 +63,7 @@ public class Game
     ///     can be taken en passant. A 0 means that it cannot currently be
     ///     taken, a 1 means it can, a 2 means it never can. The 3rd character
     ///     for rooks and kings is either 0 or 1 and denotes if the rook has
-    ///     moved or not.
+    ///     moved (1) or not (0).
     /// </summary>
     public string[,] Board { get; } =
     {
@@ -191,23 +191,22 @@ public class Game
             LastMove = LastMove
         };
     }
-
+    
     /// <summary>
-    ///     Checks if a position is checkmate by checking if the current player
-    ///     has any moves left.
+    ///     Checks if a position has any legal moves.
     /// </summary>
-    /// <returns>If checkmate has been reached</returns>
-    private bool IsCheckmate()
+    /// <returns>Whether a position has any legal moves.</returns>
+    private bool IsAnyLegalMove()
     {
         for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++)
         {
             if (Board[i, j] == "" || !IsCurrentPlayerColour(Board[i, j]))
                 continue;
-            if (GetMoves((i, j)) is not null) return false;
+            if (GetMoves((i, j)) is not null) return true;
         }
 
-        return true;
+        return false;
     }
 
     /// <summary>
@@ -396,10 +395,9 @@ public class Game
     /// </summary>
     /// <param name="position">The new position</param>
     /// <returns>If the piece has reached the opposite end</returns>
-    private bool ReachedOppositeEnd((int x, int y) position)
+    private static bool ReachedOppositeEnd((int x, int y) position)
     {
-        return (IsWhiteTurn && position.x == 7) ||
-               (!IsWhiteTurn && position.x == 0);
+        return position.x is 7 or 0;
     }
 
     /// <summary>
@@ -430,6 +428,11 @@ public class Game
             if (IsTakingEnPassant(oldPosition, newPosition))
                 Board[oldPosition.x, newPosition.y] = "";
 
+            if (LastMove == ((1, 3), (0, 3)))
+            {
+                Console.WriteLine();
+            }
+            
             if (ReachedOppositeEnd(newPosition))
             {
                 Board[oldPosition.x, oldPosition.y] =
@@ -489,11 +492,19 @@ public class Game
 
         if (IsWhiteTurn) _movesSincePawnOrCapture++;
 
-        if (IsCheckmate())
+        if (!IsAnyLegalMove())
         {
-            Score = IsWhiteTurn
-                ? -(int)Constants.Infinity
-                : (int)Constants.Infinity;
+            if (IsKingInCheck())
+            {
+                Score = IsWhiteTurn
+                    ? -(int)Constants.Infinity
+                    : (int)Constants.Infinity;
+            }
+            else
+            {
+                Score = 0;
+            }
+            
             IsFinished = true;
         }
         else if (_movesSincePawnOrCapture == 50)
@@ -569,11 +580,19 @@ public class Game
         else if (Board[position.x, position.y][2] == '0') upperLimit = 2;
 
         for (int i = 1; i <= upperLimit; i++)
+        {
+            // If out of range
+            if ((position.x + i * multiplier < 0) |
+                (position.x + i * multiplier > 7))
+                Console.WriteLine();
+            
             // If square i units above is free
             if (Board[position.x + i * multiplier, position.y] == "")
                 moves.AddNode((position.x + i * multiplier, position.y));
             else
                 break;
+        }
+            
 
         for (int i = -1; i < 2; i += 2)
         {
