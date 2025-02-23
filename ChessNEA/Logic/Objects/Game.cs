@@ -420,7 +420,7 @@ public class Game
         if (Board[oldPosition.x, oldPosition.y][1] == 'P')
         {
             _movesSincePawnOrCapture = -1;
-            // If moving en passant
+            
             if (Math.Abs(oldPosition.x - newPosition.x) == 2)
                 Board[oldPosition.x, oldPosition.y] =
                     Board[oldPosition.x, oldPosition.y][..2] + '1';
@@ -431,11 +431,6 @@ public class Game
             // Remove piece captures en passant
             if (IsTakingEnPassant(oldPosition, newPosition))
                 Board[oldPosition.x, newPosition.y] = "";
-
-            if (LastMove == ((1, 3), (0, 3)))
-            {
-                Console.WriteLine();
-            }
             
             if (ReachedOppositeEnd(newPosition))
             {
@@ -585,11 +580,6 @@ public class Game
 
         for (int i = 1; i <= upperLimit; i++)
         {
-            // If out of range
-            if ((position.x + i * multiplier < 0) |
-                (position.x + i * multiplier > 7))
-                Console.WriteLine();
-            
             // If square i units above is free
             if (Board[position.x + i * multiplier, position.y] == "")
                 moves.AddNode((position.x + i * multiplier, position.y));

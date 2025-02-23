@@ -24,8 +24,7 @@
                          Height="800"
                          Rows="8"
                          Columns="8" />
-
-            <!-- TODO: Add save game button when database is implemented -->
+            
             <Label Grid.Row="1" Grid.Column="0" x:Name="WinnerText"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center"
