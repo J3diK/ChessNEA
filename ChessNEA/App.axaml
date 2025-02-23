@@ -3,12 +3,6 @@
              x:Class="ChessNEA.App"
              RequestedThemeVariant="Light">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
-    <Application.Resources>
-        <ResourceDictionary>
-            <SolidColorBrush x:Key="DarkSquare" Color="#3d2717" />
-            <SolidColorBrush x:Key="LightSquare" Color="#e6c8a1" />
-        </ResourceDictionary>
-    </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />

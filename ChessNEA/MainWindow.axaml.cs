@@ -31,6 +31,9 @@ public partial class MainWindow : Window
         FirstOpen();
     }
 
+    /// <summary>
+    ///     Sets up the initial state of the game and window.
+    /// </summary>
     private void FirstOpen()
     {
         WinnerText.Content = "";
@@ -45,6 +48,13 @@ public partial class MainWindow : Window
         TopPlayer.FontFamily = new FontFamily("Segoe UI Symbol");
     }
 
+    /// <summary>
+    ///     Initializes the board with the current state of the game,
+    ///     also displays the moves that can be made.
+    /// </summary>
+    /// <param name="moves">
+    ///     Moves that can be made with the selected piece.
+    /// </param>
     private void InitializeBoard(LinkedList<(int, int)>? moves = null)
     {
         BoardGrid.Children.Clear();
@@ -85,6 +95,11 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    ///     Moves the selected piece to the specified position.
+    /// </summary>
+    /// <param name="position">The position to move to</param>
+    /// <exception cref="ArgumentException">Unknown piece</exception>
     private async void MovePiecePlayer((int x, int y) position)
     {
         if (_game.IsPromotingMove(_selectedPiece, position))
@@ -124,6 +139,9 @@ public partial class MainWindow : Window
         MovePieceBot();
     }
 
+    /// <summary>
+    ///     Moves the bot's piece based on the bot's evaluation.
+    /// </summary>
     private async void MovePieceBot()
     {
         ((int oldX, int oldY) moveOld, (int newX, int newY) moveNew,
@@ -137,6 +155,13 @@ public partial class MainWindow : Window
         });
     }
 
+    /// <summary>
+    ///     Moves the selected piece to the specified position.
+    /// </summary>
+    /// <param name="position">The position to move to</param>
+    /// <param name="promotionPiece">
+    ///     The piece to promote into (if required)
+    /// </param>
     private void MovePiece((int x, int y) position, char? promotionPiece = null)
     {
         if (_game.Board[position.x, position.y] != "")
@@ -152,6 +177,10 @@ public partial class MainWindow : Window
         DisplayGameEnd();
     }
 
+    /// <summary>
+    ///     Adds the captured piece to the respective player's text block.
+    /// </summary>
+    /// <param name="piece"></param>
     private void AddCapture(string piece)
     {
         if ((piece[0] == 'w' && !_isWhiteOnBottom) ||
@@ -162,6 +191,9 @@ public partial class MainWindow : Window
     }
 
 
+    /// <summary>
+    ///     Displays the game end message.
+    /// </summary>
     private void DisplayGameEnd()
     {
         string message = _game.Score switch
@@ -179,6 +211,11 @@ public partial class MainWindow : Window
         ResignOrNewGameButton.Click += ClickButtonNewGame;
     }
 
+    /// <summary>
+    ///     Displays the new game confirmation window.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
     private void ClickButtonNewGame(object? sender, RoutedEventArgs e)
     {
         NewGameConfirmation newGameConfirmation = new();
@@ -197,6 +234,9 @@ public partial class MainWindow : Window
         newGameConfirmation.Show();
     }
 
+    /// <summary>
+    ///     Sets up a new game.
+    /// </summary>
     private void SetupNewGame()
     {
         _bot = new Bot(_maxDepthPly, !_isPlayerWhite);
@@ -214,6 +254,11 @@ public partial class MainWindow : Window
         if (!_isPlayerWhite) MovePieceBot();
     }
 
+    /// <summary>
+    ///     Resigns the game.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
     private void ClickButtonResign(object? sender, RoutedEventArgs e)
     {
         _game.Score = _isPlayerWhite
@@ -223,6 +268,10 @@ public partial class MainWindow : Window
     }
 
 
+    /// <summary>
+    ///     Gets all the moves that can be made with the selected piece.
+    /// </summary>
+    /// <param name="position"></param>
     private void GetMoves((int x, int y) position)
     {
         InitializeBoard();
@@ -244,6 +293,12 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    ///    Gets the symbol (Unicode character) of the piece.
+    /// </summary>
+    /// <param name="piece">The piece to get the character for</param>
+    /// <returns>The Unicode</returns>
+    /// <exception cref="ArgumentException">Unknown piece</exception>
     private static string GetSymbol(string piece)
     {
         if (piece == "") return "";
@@ -266,6 +321,11 @@ public partial class MainWindow : Window
         };
     }
 
+    /// <summary>
+    ///     Rotates the board.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
     private void ClickButtonRotateBoard(object? sender, RoutedEventArgs e)
     {
         _isWhiteOnBottom = !_isWhiteOnBottom;

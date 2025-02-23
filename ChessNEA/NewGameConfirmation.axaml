@@ -9,13 +9,14 @@
         Height="120"
         Width="150">
     <StackPanel>
+        <!-- Toggle for white or black -->
         <StackPanel Orientation="Horizontal">
             <Label>White</Label>
             <ToggleSwitch OnContent="" OffContent="" Foreground="White"
                           x:Name="IsWhite" />
             <Label>Black</Label>
         </StackPanel>
-
+        <!-- Depth selector -->
         <StackPanel Orientation="Horizontal">
             <Label>Depth</Label>
             <Slider x:Name="MaxDepthPly" Minimum="1" Maximum="10"
@@ -23,7 +24,7 @@
                     IsSnapToTickEnabled="True" />
             <Label Content="{Binding ElementName=MaxDepthPly, Path=Value}" />
         </StackPanel>
-
+        
         <Button Click="ClickButtonNewGame">New Game</Button>
     </StackPanel>
 
