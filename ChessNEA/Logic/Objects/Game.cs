@@ -14,8 +14,8 @@ public class Game
     /// </summary>
     private Dictionary<int[], int> _boardStates;
 
-    private (int x, int y) _blackKingPosition = (3, 4); //(7, 4);
-    private (int x, int y) _whiteKingPosition = (1, 6); //(0, 4);
+    private (int x, int y) _blackKingPosition = (7, 4);
+    private (int x, int y) _whiteKingPosition = (0, 4);
 
     private int _movesSincePawnOrCapture;
 
@@ -66,30 +66,17 @@ public class Game
     ///     for rooks and kings is either 0 or 1 and denotes if the rook has
     ///     moved (1) or not (0).
     /// </summary>
-    // public string[,] Board { get; } =
-    // {
-    //     // A     B     C     D     E     F     G     H
-    //     { "wR0", "wN", "wB", "wQ", "wK0", "wB", "wN", "wR0" }, // 1
-    //     { "wP0", "wP0", "wP0", "wP0", "wP0", "wP0", "wP0", "wP0" }, // 2
-    //     { "", "", "", "", "", "", "", "" }, // 3
-    //     { "", "", "", "", "", "", "", "" }, // 4
-    //     { "", "", "", "", "", "", "", "" }, // 5
-    //     { "", "", "", "", "", "", "", "" }, // 6
-    //     { "bP0", "bP0", "bP0", "bP0", "bP0", "bP0", "bP0", "bP0" }, // 7
-    //     { "bR0", "bN", "bB", "bQ", "bK0", "bB", "bN", "bR0" } // 8
-    // };
-
     public string[,] Board { get; } =
     {
         // A     B     C     D     E     F     G     H
-        { "", "", "", "", "", "", "", "" }, // 1
-        { "", "", "", "", "", "", "wK1", "" }, // 2
-        { "", "", "", "", "", "bR1", "", "" }, // 3
-        { "", "", "", "", "bK1", "", "", "" }, // 4
+        { "wR0", "wN", "wB", "wQ", "wK0", "wB", "wN", "wR0" }, // 1
+        { "wP0", "wP0", "wP0", "wP0", "wP0", "wP0", "wP0", "wP0" }, // 2
+        { "", "", "", "", "", "", "", "" }, // 3
+        { "", "", "", "", "", "", "", "" }, // 4
         { "", "", "", "", "", "", "", "" }, // 5
-        { "bP2", "", "", "", "", "", "", "bP2" }, // 6
-        { "", "bP0", "bP0", "", "", "bP0", "bP0", "" }, // 7
-        { "", "", "", "", "", "", "", "" } // 8
+        { "", "", "", "", "", "", "", "" }, // 6
+        { "bP0", "bP0", "bP0", "bP0", "bP0", "bP0", "bP0", "bP0" }, // 7
+        { "bR0", "bN", "bB", "bQ", "bK0", "bB", "bN", "bR0" } // 8
     };
     
     public Game(bool? isWhiteTurn = null, string[,]? board = null)

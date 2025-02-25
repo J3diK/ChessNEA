@@ -739,11 +739,6 @@ public class Bot(int maxDepthPly, bool isWhite = false)
             }
             else
             {
-                if (currentNode.Data == ((4, 4), (3, 4)))
-                {
-                    Console.WriteLine();
-                }
-                
                 Game childGame = game.Copy();
                 childGame.MovePiece(currentNode.Data.Item1,
                     currentNode.Data.Item2);
