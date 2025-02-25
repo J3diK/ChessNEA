@@ -20,6 +20,18 @@ public class Bot(int maxDepthPly, bool isWhite = false)
         { 5, 10, 10, -20, -20, 10, 10, 5 },
         { 0, 0, 0, 0, 0, 0, 0, 0 }
     };
+    
+    private static readonly int[,] PawnEndgameTable =
+    {
+        { 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 70, 70, 70, 70, 70, 70, 70, 70 },
+        { 50, 50, 50, 50, 50, 50, 50, 50 },
+        { 35, 35, 35, 35, 35, 35, 35, 35 },
+        { 15, 15, 15, 15, 15, 15, 15, 15 },
+        { 5, 5, 5, 5, 5, 5, 5, 5 },
+        { 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 0, 0, 0, 0, 0, 0, 0, 0 }
+    };
 
     private static readonly int[,] KnightTable =
     {
@@ -431,23 +443,24 @@ public class Bot(int maxDepthPly, bool isWhite = false)
         int value = 0;
         const int alpha = -(int)Constants.Infinity;
         const int beta = (int)Constants.Infinity;
+        ((int oldX, int oldY), (int newX, int newY)) bestMove =
+            ((-1, -1), (-1, -1));
+        char? piece = null;
 
         // Iterative deepening search
         for (int depth = 1; depth <= _maxDepthPly; depth++)
         {
-            (value, ((int oldX, int oldY), (int newX, int newY)) bestMove,
-                char? piece) = depth == 1
+            (value, bestMove, piece) = depth == 1
                 ? Negamax(localGame, depth, colour, alpha, beta)
                 : Negamax(localGame, depth, colour, alpha, beta, value);
-
-            // Update the vote count for the move
-            if (bestMove == ((-1, -1), (-1, -1))) continue;
-
-            int depthLocal = depth;
-            _moveVoteCount.AddOrUpdate((bestMove.Item1, bestMove.Item2, piece),
-                depth,
-                (_, count) => count + depthLocal);
         }
+        
+        // Update the vote count for the move
+        if (bestMove == ((-1, -1), (-1, -1))) return;
+        
+        _moveVoteCount.AddOrUpdate((bestMove.Item1, bestMove.Item2, piece),
+            _maxDepthPly,
+            (_, count) => count + _maxDepthPly);
     }
 
     /// <summary>
@@ -726,9 +739,15 @@ public class Bot(int maxDepthPly, bool isWhite = false)
             }
             else
             {
+                if (currentNode.Data == ((4, 4), (3, 4)))
+                {
+                    Console.WriteLine();
+                }
+                
                 Game childGame = game.Copy();
                 childGame.MovePiece(currentNode.Data.Item1,
                     currentNode.Data.Item2);
+                
                 (value, move, alpha, moveChanged) = NegamaxMain(childGame,
                     depth, colour, alpha, beta,
                     windowCentre, currentNode, value, extension, move);
@@ -873,7 +892,7 @@ public class Bot(int maxDepthPly, bool isWhite = false)
 
         int value = piece[1] switch
         {
-            'P' => PawnTable[x, y],
+            'P' => !_inEndgame ? PawnTable[x, y] : PawnEndgameTable[x, y],
             'N' => KnightTable[x, y],
             'B' => BishopTable[x, y],
             'R' => RookTable[x, y],
