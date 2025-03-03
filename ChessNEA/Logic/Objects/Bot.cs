@@ -485,10 +485,9 @@ public class Bot(int maxDepthPly, bool isWhite = false)
     /// <param name="oldPos"></param>
     /// <param name="newPos"></param>
     /// <returns></returns>
-    private bool IsQuiet(Game game, (int oldX, int oldY) oldPos,
+    private static bool IsQuiet(Game game, (int oldX, int oldY) oldPos,
         (int newX, int newY) newPos)
     {
-        if (_inEndgame) return false;
         if (IsCapture(game, newPos)) return false;
         if (game.IsPromotingMove(oldPos, newPos)) return false;
 
@@ -579,13 +578,13 @@ public class Bot(int maxDepthPly, bool isWhite = false)
                     Game copyGame = game.Copy();
                     alpha = QsAlphaBeta(copyGame, alpha, beta, colour,
                         currentNode, promotion);
-                    if (alpha >= beta) return beta;
+                    if (alpha >= beta) return alpha;
                 }
             }
             else
             {
                 alpha = QsAlphaBeta(game, alpha, beta, colour, currentNode);
-                if (alpha >= beta) return beta;
+                if (alpha >= beta) return alpha;
             }
 
             currentNode = currentNode.NextNode;
@@ -613,7 +612,7 @@ public class Bot(int maxDepthPly, bool isWhite = false)
         childGame.MovePiece(currentNode!.Data.Item1, currentNode.Data.Item2,
             promotion);
         int value = -QuiescenceSearch(childGame, -colour, -beta, -alpha);
-        return value >= beta ? beta : Math.Max(alpha, value);
+        return value >= beta ? value : Math.Max(alpha, value);
     }
 
     /// <summary>
@@ -687,7 +686,8 @@ public class Bot(int maxDepthPly, bool isWhite = false)
             return (result, ((-1, -1), (-1, -1)), null);
         }
 
-        if (game.IsFinished) return (game.Score, ((-1, -1), (-1, -1)), null);
+        if (game.IsFinished)
+            return (colour * game.Score, ((-1, -1), (-1, -1)), null);
 
         // depth >= 3 ensures (depth - 3) > 0. -3 is used as the fixed reduction
         // value.

@@ -79,6 +79,7 @@ public class Game
         { "bR0", "bN", "bB", "bQ", "bK0", "bB", "bN", "bR0" } // 8
     };
     
+    
     public Game(bool? isWhiteTurn = null, string[,]? board = null)
     {
         if (board is not null) Board = board;
